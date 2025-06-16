@@ -6,13 +6,16 @@ on:
     - cron: '*/5 8-18 * * 1-5'  # Every 5 min, Mon-Fri, 8 AM - 6 PM UTC
   workflow_dispatch:  # Allows manual triggering
 
+permissions:
+  contents: write  # Explicitly grant write permissions
+
 jobs:
   run-automation:
     runs-on: ubuntu-latest
     
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4  # Updated to v4
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         fetch-depth: 0
@@ -49,6 +52,7 @@ jobs:
         
     - name: Commit updated state file
       run: |
+        # Configure git
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         
@@ -70,10 +74,12 @@ jobs:
           git commit -m "Update automation state - $TIMESTAMP$PATTERN_INFO"
           
           # Push changes back to repository
-          git push
+          git push origin main  # Explicitly specify branch
           
           echo "✅ State file committed and pushed to repository"
         fi
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Ensure token is available
         
     - name: Notify on failure
       if: failure()
@@ -84,4 +90,6 @@ jobs:
         git config --local user.name "GitHub Action"
         git add automation_state.json || true
         git commit -m "Update automation state - FAILED RUN $(date -u)" || true
-        git push || true
+        git push origin main || true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
