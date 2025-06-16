@@ -1243,7 +1243,7 @@ def main():
     
     try:
         # Login and navigate
-        if not login(driver, "ryan", "Crucial12!"):
+        if not login(driver, "ryan", os.environ.get('LOGIN_PASSWORD', '')):
             print("❌ Login failed")
             save_state(updated_state)
             return
