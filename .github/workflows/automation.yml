@@ -13,6 +13,9 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
       
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -28,40 +31,48 @@ jobs:
       run: |
         pip install -r requirements.txt
         
-    - name: Download state file from previous run
-      uses: actions/download-artifact@v4
-      with:
-        name: automation-state
-        path: .
-      continue-on-error: true
-      
-    - name: Check if state file was downloaded
+    - name: Check existing state file
       run: |
         if [ -f automation_state.json ]; then
-          echo "✅ Previous state file found and downloaded"
+          echo "✅ Previous state file found in repository"
           cat automation_state.json
         else
-          echo "📝 No previous state file found - this is normal for first run"
-        fi
-    
-    - name: Create default state if none exists
-      run: |
-        if [ ! -f automation_state.json ]; then
+          echo "📝 No previous state file found - creating default"
           echo '{"current_project": null, "current_sample_index": 0, "processed_samples": [], "failed_samples": [], "completed_projects": [], "last_run_time": null, "total_samples_processed": 0}' > automation_state.json
-          echo "🆕 Created default state file"
         fi
         
     - name: Run automation script with real UK timing
       run: python automation_script.py
       
-    - name: Upload updated state file
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: automation-state
-        path: automation_state.json
+    - name: Commit updated state file
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        # Add the updated state file
+        git add automation_state.json
+        
+        # Check if there are changes to commit
+        if git diff --staged --quiet; then
+          echo "No changes to commit"
+        else
+          # Create commit with timestamp
+          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          git commit -m "Update automation state - $TIMESTAMP"
+          
+          # Push changes back to repository
+          git push
+          
+          echo "✅ State file committed and pushed to repository"
+        fi
         
     - name: Notify on failure
       if: failure()
       run: |
         echo "❌ Automation failed at $(date)"
+        # Even on failure, try to commit any state changes
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add automation_state.json || true
+        git commit -m "Update automation state - FAILED RUN $(date -u)" || true
+        git push || true
