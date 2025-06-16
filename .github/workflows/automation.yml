@@ -1,9 +1,9 @@
-name: Colab Automation Every 17 Minutes
+name: Realistic Variable Timing Automation
 
 on:
   schedule:
-    # Runs every 17 minutes during work hours (8 AM - 6 PM UTC)
-    - cron: '0,17,34,51 8-18 * * 1-5'  # Mon-Fri, every 17 min, 8-6 PM
+    # Check every 5 minutes during work hours - script decides when to actually process
+    - cron: '*/5 8-18 * * 1-5'  # Every 5 min, Mon-Fri, 8 AM - 6 PM UTC
   workflow_dispatch:  # Allows manual triggering
 
 jobs:
@@ -35,15 +35,18 @@ jobs:
       run: |
         if [ -f automation_state.json ]; then
           echo "✅ Previous state file found in repository"
-          cat automation_state.json
+          echo "Current state:"
+          cat automation_state.json | jq '.' || cat automation_state.json
         else
           echo "📝 No previous state file found - creating default"
-          echo '{"current_project": null, "current_sample_index": 0, "processed_samples": [], "failed_samples": [], "completed_projects": [], "last_run_time": null, "total_samples_processed": 0}' > automation_state.json
+          echo '{"current_project": null, "current_sample_index": 0, "processed_samples": [], "failed_samples": [], "completed_projects": [], "last_run_time": null, "total_samples_processed": 0, "current_pattern_index": 0, "last_pattern_hour": -1, "pattern_change_interval": 3}' > automation_state.json
         fi
         
-    - name: Run automation script with real UK timing
-      run: python automation_script.py
-      
+    - name: Run automation script with variable timing
+      run: |
+        echo "🕐 Checking if it's time to process a sample..."
+        python automation_script.py
+        
     - name: Commit updated state file
       run: |
         git config --local user.email "action@github.com"
@@ -56,9 +59,15 @@ jobs:
         if git diff --staged --quiet; then
           echo "No changes to commit"
         else
-          # Create commit with timestamp
+          # Create commit with timestamp and pattern info
           TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
-          git commit -m "Update automation state - $TIMESTAMP"
+          PATTERN_INFO=""
+          if command -v jq &> /dev/null && [ -f automation_state.json ]; then
+            CURRENT_PATTERN=$(cat automation_state.json | jq -r '.current_pattern // "unknown"' 2>/dev/null || echo "unknown")
+            PATTERN_INFO=" - Pattern: $CURRENT_PATTERN"
+          fi
+          
+          git commit -m "Update automation state - $TIMESTAMP$PATTERN_INFO"
           
           # Push changes back to repository
           git push
