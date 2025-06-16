@@ -1,0 +1,56 @@
+name: Colab Automation Every 15 Minutes
+
+on:
+  schedule:
+    # Runs every 15 minutes during work hours (8 AM - 6 PM UTC)
+    - cron: '*/15 8-18 * * 1-5'  # Mon-Fri, every 15 min, 8-6 PM
+  workflow_dispatch:  # Allows manual triggering
+
+jobs:
+  run-automation:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        
+    - name: Install Chrome
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y google-chrome-stable
+        
+    - name: Install Python dependencies
+      run: |
+        pip install -r requirements.txt
+        
+    - name: Download state file from previous run
+      run: |
+        curl -L -o automation_state.json \
+          "https://github.com/${{ github.repository }}/releases/latest/download/automation_state.json" || \
+          echo '{"current_project": null, "current_sample_index": 0, "processed_samples": [], "failed_samples": [], "completed_projects": [], "last_run_time": null, "total_samples_processed": 0}' > automation_state.json
+    
+    - name: Run automation script
+      run: python automation_script.py
+      
+    - name: Upload updated state file
+      if: always()
+      run: |
+        # Create a release with the updated state file
+        TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+        gh release create "state-$TIMESTAMP" automation_state.json \
+          --title "Automation State $TIMESTAMP" \
+          --notes "Automated state update at $(date)" \
+          --latest
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Notify on failure
+      if: failure()
+      run: |
+        echo "❌ Automation failed at $(date)"
+        # You can add email notifications here if needed
