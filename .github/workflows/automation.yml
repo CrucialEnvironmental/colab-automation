@@ -42,7 +42,7 @@ jobs:
           cat automation_state.json | jq '.' || cat automation_state.json
         else
           echo "📝 No previous state file found - creating default"
-          echo '{"current_project": null, "current_sample_index": 0, "processed_samples": [], "failed_samples": [], "completed_projects": [], "last_run_time": null, "total_samples_processed": 0, "current_pattern_index": 0, "last_pattern_hour": -1, "pattern_change_interval": 3}' > automation_state.json
+          echo '{"current_project": null, "current_sample_index": 0, "processed_samples": [], "failed_samples": [], "completed_projects": [], "last_run_time": null, "total_samples_processed": 0}' > automation_state.json
         fi
         
     - name: Run automation script with variable timing
@@ -65,15 +65,15 @@ jobs:
         if git diff --staged --quiet; then
           echo "No changes to commit"
         else
-          # Create commit with timestamp and pattern info
+          # Create commit with timestamp and interval info
           TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
-          PATTERN_INFO=""
+          INTERVAL_INFO=""
           if command -v jq &> /dev/null && [ -f automation_state.json ]; then
-            CURRENT_PATTERN=$(cat automation_state.json | jq -r '.current_pattern // "unknown"' 2>/dev/null || echo "unknown")
-            PATTERN_INFO=" - Pattern: $CURRENT_PATTERN"
+            CURRENT_INTERVAL=$(cat automation_state.json | jq -r '.current_interval // "unknown"' 2>/dev/null || echo "unknown")
+            INTERVAL_INFO=" - Next interval: ${CURRENT_INTERVAL}min"
           fi
           
-          git commit -m "Update automation state - $TIMESTAMP$PATTERN_INFO"
+          git commit -m "Update automation state - $TIMESTAMP$INTERVAL_INFO"
           
           # Push changes back to repository
           git push origin main  # Explicitly specify branch
