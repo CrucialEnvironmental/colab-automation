@@ -36,14 +36,24 @@ def setup_chrome_for_github():
     chrome_options.add_argument("--disable-web-security")
     chrome_options.add_argument("--disable-extensions")
     chrome_options.add_argument("--disable-default-apps")
+    chrome_options.add_argument("--force-device-scale-factor=1")
+    chrome_options.add_argument("--high-dpi-support=1")
     
     driver = webdriver.Chrome(options=chrome_options)
     driver.maximize_window()
     
     return driver
 
+def capture_screenshot(driver, filename):
+    """Captures a screenshot (simplified for GitHub Actions)"""
+    try:
+        driver.save_screenshot(filename)
+        print(f"Screenshot saved: {filename}")
+    except Exception as e:
+        print(f"Could not save screenshot: {e}")
+
 # ============================================================================
-# YOUR EXISTING FUNCTIONS (Copy from your Colab blocks)
+# YOUR ORIGINAL FUNCTIONS FROM COLAB BLOCKS
 # ============================================================================
 
 def load_data_from_google_sheets(url, columns, row_index=0):
@@ -93,10 +103,12 @@ def login(driver, username, password):
 
         WebDriverWait(driver, 10).until(EC.url_contains("TabbedUI_MainMenu"))
         print(f"Login successful for user '{username}'!")
+        capture_screenshot(driver, f"screenshot_after_login_{username}.png")
         return True
 
     except Exception as e:
         print(f"Error occurred during login for user '{username}': {e}")
+        capture_screenshot(driver, f"login_error_{username}.png")
         return False
 
 def click_lab_button(driver):
@@ -134,12 +146,15 @@ def input_project_number(driver, project_number):
         project_number = str(int(float(project_number)))
         project_number_field.send_keys(project_number)
         print(f"Project number {project_number} input successful!")
+        capture_screenshot(driver, "project_number_input.png")
         return True
     except TimeoutException:
         print("Error: Could not find the project number input field.")
+        capture_screenshot(driver, "project_number_input_error.png")
         return False
     except Exception as e:
         print(f"An error occurred while inputting project number: {str(e)}")
+        capture_screenshot(driver, "project_number_input_error.png")
         return False
 
 def press_enter_or_search_on_project_number(driver, project_number):
@@ -218,6 +233,8 @@ def verify_project_numbers(driver):
             raise ValueError(f"Project numbers mismatch: Span '{span_project_number_text}' vs Input '{input_project_number_value}'")
 
         print("Project numbers match. Continuing execution.")
+        screenshot_filename = f"project_numbers_match_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.png"
+        capture_screenshot(driver, screenshot_filename)
 
     except TimeoutException:
         print("Error: Could not locate one or both project number elements.")
@@ -235,6 +252,7 @@ def click_view_fibre_analysis_button(driver):
         )
 
         driver.execute_script("arguments[0].scrollIntoView(true);", fibre_analysis_button)
+        capture_screenshot(driver, "before_click_view_fibre_analysis_button.png")
         fibre_analysis_button.click()
         print("Clicked the 'View Fibre Analysis' button successfully!")
 
@@ -248,13 +266,16 @@ def click_view_fibre_analysis_button(driver):
         )
         print("Loading pop-up dismissed.")
 
+        capture_screenshot(driver, "after_loading_fibre_analysis.png")
         return True
 
     except TimeoutException:
         print("Timeout: Loading did not finish in the expected time.")
+        capture_screenshot(driver, "timeout_loading_fibre_analysis.png")
         return False
     except Exception as e:
         print(f"An error occurred while clicking 'View Fibre Analysis' button: {e}")
+        capture_screenshot(driver, "error_clicking_view_fibre_analysis_button.png")
         return False
 
 def clear_search_criteria(driver):
@@ -280,6 +301,608 @@ def wait_for_no_overlay(driver, timeout=10):
     except TimeoutException:
         print("Overlay did not disappear.")
         return False
+
+# ============================================================================
+# POPUP HANDLING AND SAMPLE PROCESSING FUNCTIONS
+# ============================================================================
+
+def handle_popup_ok_button(driver):
+    """Detects and clicks the 'OK' button on a popup if it appears."""
+    try:
+        ok_button = WebDriverWait(driver, 5).until(
+            EC.element_to_be_clickable((By.ID, "A5dlg1.BUTTON.ok"))
+        )
+        ok_button.click()
+        print("Popup 'OK' button clicked successfully.")
+        return True
+    except TimeoutException:
+        return False
+    except Exception as e:
+        print(f"An error occurred while handling popup: {e}")
+        return False
+
+def handle_popup(func):
+    """Decorator to handle popup after executing a function."""
+    @wraps(func)
+    def wrapper(driver, *args, **kwargs):
+        try:
+            result = func(driver, *args, **kwargs)
+            
+            if handle_popup_ok_button(driver):
+                print(f"Popup handled after executing {func.__name__}.")
+                click_save_button(driver)
+                return False
+            
+            return result
+        except Exception as e:
+            print(f"Error in {func.__name__}: {e}")
+            return False
+    return wrapper
+
+def click_sample_row_with_next_button(driver, sample_no, last_sample_no=1):
+    """Clicks the row corresponding to the given Sample No."""
+    try:
+        clicks_required = (sample_no - 1) // 10 - (last_sample_no - 1) // 10
+        print(f"Navigating to Sample No. {sample_no}. Requires {clicks_required} 'Next' clicks.")
+
+        if clicks_required < 0:
+            raise ValueError("Invalid sample navigation: sample_no must be greater than or equal to last_sample_no.")
+
+        for _ in range(clicks_required):
+            print("Clicking 'Next' button...")
+            next_button = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.ID, "TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.V.R1.FOOTER_CONTROLS.Next.ICON"))
+            )
+            next_button.click()
+            print("Clicked 'Next' button successfully.")
+            time.sleep(2)
+
+        row_index_on_page = (sample_no - 1) % 10 + 1
+        sample_css_selector = f"#TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA\\.TD\\.R{row_index_on_page}\\.SAMPLE_ID"
+        print(f"Attempting to click Sample No. {sample_no} at row index {row_index_on_page}")
+
+        sample_element = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, sample_css_selector))
+        )
+        sample_element.click()
+        print(f"Clicked on Sample No. {sample_no} successfully.")
+
+        screenshot_filename = f"sample_{sample_no}_clicked.png"
+        capture_screenshot(driver, screenshot_filename)
+
+        return True, sample_no
+
+    except TimeoutException:
+        print(f"Error: Sample row for Sample No. {sample_no} not found.")
+        capture_screenshot(driver, f"error_sample_{sample_no}.png")
+    except Exception as e:
+        print(f"Failed to click Sample No. {sample_no}: {e}")
+        capture_screenshot(driver, f"error_sample_{sample_no}.png")
+
+    return False, last_sample_no
+
+@handle_popup
+def input_stereo_binocular_start_time(driver, df, row_index):
+    """Inputs the Stereo Binocular Start Time for a given sample."""
+    try:
+        if not isinstance(df, pd.DataFrame):
+            raise ValueError(f"Invalid df type: {type(df)}. Expected pandas.DataFrame.")
+
+        if df.empty:
+            print("Error: The DataFrame is empty.")
+            return False
+
+        if row_index >= len(df):
+            print("Error: Row index exceeds the length of the DataFrame.")
+            return False
+
+        time_string = df.loc[row_index, "Stereo Binocular Start Time"]
+        if not time_string or pd.isna(time_string):
+            print(f"Error: Missing Stereo Binocular Start Time for row {row_index}.")
+            return False
+
+        input_field = WebDriverWait(driver, 10).until(
+            EC.visibility_of_element_located((By.ID, "TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.V.R1.STEREOBINOCULARSTARTTIME"))
+        )
+
+        input_field.clear()
+        input_field.send_keys(time_string)
+        print(f"Stereo Binocular Start Time '{time_string}' input successfully for Sample No. {df.loc[row_index, 'Sample No.']}.")
+
+        return True
+
+    except TimeoutException:
+        print(f"Error: Stereo Binocular Start Time input field not found for row {row_index}.")
+        return False
+    except ValueError as ve:
+        print(f"ValueError: {ve}")
+        return False
+    except Exception as e:
+        print(f"An error occurred while inputting Stereo Binocular Start Time for row {row_index}: {e}")
+        return False
+
+@handle_popup
+def copy_value_to_dropdown(driver):
+    try:
+        text_input = WebDriverWait(driver, 10).until(
+            EC.visibility_of_element_located((By.ID, "TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.V.R1.SURVEYORS_ASSESSMENT"))
+        )
+
+        value = text_input.get_attribute("value")
+
+        dropdown = WebDriverWait(driver, 10).until(
+            EC.visibility_of_element_located((By.ID, "TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.V.R1.ANALYST_ASSESSMENT"))
+        )
+
+        dropdown_option = WebDriverWait(dropdown, 10).until(
+            EC.visibility_of_element_located((By.XPATH, f"//option[text()='{value}']"))
+        )
+        dropdown_option.click()
+
+        dropdown.send_keys(Keys.ENTER)
+
+        print("Value copied to dropdown and Enter key pressed successfully!")
+        return True
+
+    except TimeoutException:
+        print("Error: Element not found.")
+        return False
+    except Exception as e:
+        print("An error occurred:", str(e))
+        return False
+
+@handle_popup
+def set_sample_size_value(driver):
+    try:
+        sample_size_field = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.ID, "TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.V.R1.SAMPLE_SIZE"))
+        )
+
+        sample_size_field.clear()
+        time.sleep(1)
+
+        sample_size_field.send_keys("sufficient")
+        sample_size_field.send_keys(Keys.ENTER)
+
+        time.sleep(2)
+
+        entered_value = sample_size_field.get_attribute("value")
+        if entered_value.lower() != "sufficient":
+            print(f"⚠️ Warning: Expected 'sufficient', but found '{entered_value}'. Retrying...")
+            sample_size_field.clear()
+            sample_size_field.send_keys("sufficient")
+            sample_size_field.send_keys(Keys.ENTER)
+
+        print("✅ Sample size set to 'sufficient' successfully!")
+        capture_screenshot(driver, "sample_size_set.png")
+
+        return True
+
+    except TimeoutException:
+        print("❌ Error: Sample size field not found within the timeout.")
+        return False
+    except Exception as e:
+        print(f"❌ An error occurred while setting sample size: {str(e)}")
+        return False
+
+@handle_popup
+def set_plm_end_time(driver, stereo_start_time):
+    try:
+        if stereo_start_time:
+            stereo_start_datetime = datetime.strptime(stereo_start_time, '%d/%m/%Y %H:%M:%S')
+
+            new_time = stereo_start_datetime + timedelta(minutes=16, seconds=random.randint(0, 60))
+
+            formatted_time = new_time.strftime('%d/%m/%Y %H:%M:%S')
+
+            plm_end_time_field = WebDriverWait(driver, 10).until(
+                EC.visibility_of_element_located((By.ID, "TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.V.R1.PLMENDTIME"))
+            )
+
+            plm_end_time_field.clear()
+            plm_end_time_field.send_keys(formatted_time)
+
+            print("PLM end time set successfully!")
+            capture_screenshot(driver, "plm_end_time_set.png")
+
+            return True
+
+        else:
+            print("Error: Stereo Binocular Start Time is empty.")
+            return False
+
+    except TimeoutException:
+        print("Error: PLM End Time input field not found.")
+        return False
+    except Exception as e:
+        print("An error occurred while setting PLM End Time:", str(e))
+        return False
+
+@handle_popup
+def click_analysis_tab(driver):
+    """Clicks on the 'Analysis' tab in the Fibre Analysis pop-up."""
+    try:
+        print("Attempting to locate 'Analysis' tab...")
+        analysis_tab_id = "TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.V.R1.MAIN_TAB.1.TAB"
+
+        analysis_tab = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.ID, analysis_tab_id))
+        )
+        driver.execute_script("arguments[0].scrollIntoView(true);", analysis_tab)
+        driver.execute_script("arguments[0].click();", analysis_tab)
+        print("Clicked on the 'Analysis' tab using ID successfully.")
+
+        time.sleep(2)
+
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.XPATH, "//div[text()='Analysis 1']"))
+        )
+        print("Analysis tab content loaded successfully.")
+        return True
+
+    except TimeoutException:
+        print("Timeout: 'Analysis' tab content not found or not clickable.")
+        capture_screenshot(driver, "analysis_tab_not_found.png")
+        return False
+    except Exception as e:
+        print(f"An error occurred while clicking the 'Analysis' tab: {e}")
+        capture_screenshot(driver, "analysis_tab_error.png")
+        return False
+
+@handle_popup
+def handle_analysis_1_result(driver, df, row_index):
+    """Handles the analysis result for a specific sample in the 'Analysis' tab."""
+    try:
+        analysis_1_result = df.loc[row_index, 'Analysis 1']
+
+        if pd.isna(analysis_1_result):
+            print(f"Analysis result is empty or NaN for Sample No. {row_index}. Skipping.")
+            return False
+
+        print(f"Processing Analysis 1 result for Sample No. {row_index}: {analysis_1_result}")
+
+        if "NAD" in analysis_1_result:
+            print("Handling NAD result...")
+            click_NAD_result_elements(driver, NAD_result_elements)
+            capture_screenshot(driver, "NAD_result.png")
+
+        elif "Chrysotile" in analysis_1_result:
+            print("Handling Chrysotile result...")
+            click_Chrysotile_result_elements(driver, Chrysotile_result_elements)
+            capture_screenshot(driver, "Chrysotile_result.png")
+
+        elif "Amosite" in analysis_1_result:
+            print("Handling Amosite result...")
+            click_amosite_result_elements(driver, amosite_result_elements)
+            capture_screenshot(driver, "Amosite_result.png")
+
+        elif "Crocidolite" in analysis_1_result:
+            print("Handling Crocidolite result...")
+            click_crocidolite_result_elements(driver, crocidolite_result_elements)
+            capture_screenshot(driver, "Crocidolite_result.png")
+
+        else:
+            print(f"Unknown analysis result for Sample No. {row_index}: {analysis_1_result}")
+            capture_screenshot(driver, "unknown_analysis_result.png")
+            return False
+
+        print(f"Analysis result handled successfully for Sample No. {row_index}")
+        capture_screenshot(driver, "analysis_result_handling_success.png")
+        return True
+
+    except KeyError as e:
+        print(f"KeyError: Missing column in DataFrame - {e}")
+        capture_screenshot(driver, "analysis_result_keyerror.png")
+        return False
+    except TimeoutException:
+        print("Error: Element not found within the specified time.")
+        capture_screenshot(driver, "analysis_result_timeout.png")
+        return False
+    except Exception as e:
+        print(f"An error occurred while handling analysis 1 result: {str(e)}")
+        capture_screenshot(driver, "analysis_result_error.png")
+        return False
+
+# Analysis element lists (your original data)
+NAD_result_elements = [
+    "id=TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.V.R1.MAIN_TAB.1.TAB",
+    "css=#TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX\.V\.R1\.FIBRE_ANALYSIS_LIST\.CONTROL\.0 > table > tbody > tr > td:nth-child(1)",
+    "id=TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.FIBRE_ANALYSIS_OPTIONS_LIST.VALUE.I.0",
+    "css=#TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX\.V\.R1\.FIBRE_ANALYSIS_OPTIONS_LIST\.CONTROL\.0 > table",
+    "id=TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.FIBRE_ANALYSIS_OPTIONS_LIST.VALUE.I.0",
+    "css=#TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX\.V\.R1\.FIBRE_ANALYSIS_OPTIONS_LIST\.CONTROL\.2 > table",
+    "css=#TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX\.V\.R1\.FIBRE_ANALYSIS_OPTIONS_LIST\.CONTROL\.2 > table",
+    "css=#TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX\.V\.R1\.FIBRE_ANALYSIS_OPTIONS_LIST\.CONTROL\.0 td:nth-child(2)",
+    "id=TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.V.R1.FIBRE_ANALYSIS_OPTIONS_LIST.CONTROL.2",
+    "id=TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.FIBRE_ANALYSIS_OPTIONS_LIST.VALUE.I.1",
+    "css=#TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX\.V\.R1\.FIBRE_ANALYSIS_OPTIONS_LIST\.CONTROL\.2 td:nth-child(2)",
+    "id=TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.V.R1.FIBRE_ANALYSIS_OPTIONS_LIST.CONTROL.4",
+    "css=#TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX\.V\.R1\.FIBRE_ANALYSIS_OPTIONS_LIST\.CONTROL\.5 > table",
+    "id=TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX_analysis_tab_2",
+    "css=#TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX\.V\.R1\.FIBRE_ANALYSIS_LIST\.CONTROL\.0 > table > tbody > tr > td:nth-child(3)",
+    "id=TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.FIBRE_ANALYSIS_OPTIONS_LIST.VALUE.I.0",
+    "css=#TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX\.V\.R1\.FIBRE_ANALYSIS_OPTIONS_LIST\.CONTROL\.0 td:nth-child(2)",
+    "css=#TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX\.V\.R1\.FIBRE_ANALYSIS_OPTIONS_LIST\.CONTROL\.0 > table",
+    "id=TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.FIBRE_ANALYSIS_OPTIONS_LIST.VALUE.I.2",
+    "css=#TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX\.V\.R1\.FIBRE_ANALYSIS_OPTIONS_LIST\.CONTROL\.2 td:nth-child(2)",
+    "css=#TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX\.V\.R1\.FIBRE_ANALYSIS_OPTIONS_LIST\.CONTROL\.0 td:nth-child(2)",
+    "css=#TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX\.V\.R1\.FIBRE_ANALYSIS_OPTIONS_LIST\.CONTROL\.2 > table",
+    "css=#TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX\.V\.R1\.FIBRE_ANALYSIS_OPTIONS_LIST\.CONTROL\.1 > table",
+    "css=#TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX\.V\.R1\.FIBRE_ANALYSIS_OPTIONS_LIST\.CONTROL\.2 td:nth-child(2)",
+    "css=#TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX\.V\.R1\.FIBRE_ANALYSIS_OPTIONS_LIST\.CONTROL\.4 > table",
+    "css=#TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX\.V\.R1\.FIBRE_ANALYSIS_OPTIONS_LIST\.CONTROL\.5 td:nth-child(2)",
+]
+
+Chrysotile_result_elements = [
+    "id=TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.V.R1.MAIN_TAB.1.TAB",
+    "css=#TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX\.V\.R1\.FIBRE_ANALYSIS_LIST\.CONTROL\.0 > table > tbody > tr > td:nth-child(1)",
+    "id=TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.FIBRE_ANALYSIS_OPTIONS_LIST.VALUE.I.0",
+    "id=TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.FIBRE_ANALYSIS_OPTIONS_LIST.VALUE.I.0",
+    "css=#TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX\.V\.R1\.FIBRE_ANALYSIS_OPTIONS_LIST\.CONTROL\.0 td:nth-child(2)",
+    "css=#TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX\.V\.R1\.FIBRE_ANALYSIS_OPTIONS_LIST\.CONTROL\.0 td:nth-child(2)",
+    "id=TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.FIBRE_ANALYSIS_OPTIONS_LIST.VALUE.I.2",
+    "css=#TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX\.V\.R1\.FIBRE_ANALYSIS_OPTIONS_LIST\.CONTROL\.0 td:nth-child(2)",
+    "id=TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.FIBRE_ANALYSIS_OPTIONS_LIST.VALUE.I.2",
+    "id=TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.FIBRE_ANALYSIS_OPTIONS_LIST.VALUE.I.4",
+    "css=#TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX\.V\.R1\.FIBRE_ANALYSIS_OPTIONS_LIST\.CONTROL\.2 td:nth-child(2)",
+    "id=TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.FIBRE_ANALYSIS_OPTIONS_LIST.VALUE.I.1",
+    "id=TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.FIBRE_ANALYSIS_OPTIONS_LIST.VALUE.I.3",
+]
+
+amosite_result_elements = [
+    "id=TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.V.R1.MAIN_TAB.1.TAB",
+    "css=#TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX\.V\.R1\.FIBRE_ANALYSIS_LIST\.CONTROL\.0 > table > tbody > tr > td:nth-child(1)",
+    "id=TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.FIBRE_ANALYSIS_OPTIONS_LIST.VALUE.I.0",
+    "id=TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.FIBRE_ANALYSIS_OPTIONS_LIST.VALUE.I.0",
+    "id=TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.FIBRE_ANALYSIS_OPTIONS_LIST.VALUE.I.3",
+    "css=#TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX\.V\.R1\.FIBRE_ANALYSIS_OPTIONS_LIST\.CONTROL\.2 td:nth-child(2)",
+    "css=#TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX\.V\.R1\.FIBRE_ANALYSIS_OPTIONS_LIST\.CONTROL\.2 td:nth-child(2)",
+    "id=TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.FIBRE_ANALYSIS_OPTIONS_LIST.VALUE.I.2",
+    "css=#TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX\.V\.R1\.FIBRE_ANALYSIS_OPTIONS_LIST\.CONTROL\.1 td:nth-child(2)",
+    "id=TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.FIBRE_ANALYSIS_OPTIONS_LIST.VALUE.I.0",
+    "id=TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.FIBRE_ANALYSIS_OPTIONS_LIST.VALUE.I.1",
+    "css=#TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX\.V\.R1\.FIBRE_ANALYSIS_OPTIONS_LIST\.CONTROL\.3 td:nth-child(2)",
+    "css=#TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX\.V\.R1\.FIBRE_ANALYSIS_OPTIONS_LIST\.CONTROL\.1 td:nth-child(2)",
+]
+
+crocidolite_result_elements = [
+    "id=TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.V.R1.MAIN_TAB.1.TAB",
+    "id=TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX_analysis_tab_1",
+    "id=TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.FIBRE_ANALYSIS_LIST.DISPLAY_NAME.I.0",
+    "id=TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.FIBRE_ANALYSIS_OPTIONS_LIST.VALUE.I.0",
+    "id=TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.FIBRE_ANALYSIS_OPTIONS_LIST.VALUE.I.0",
+    "id=TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.FIBRE_ANALYSIS_OPTIONS_LIST.VALUE.I.4",
+    "id=TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.FIBRE_ANALYSIS_OPTIONS_LIST.VALUE.I.1",
+    "css=#TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX\.V\.R1\.FIBRE_ANALYSIS_OPTIONS_LIST\.CONTROL\.3 > table",
+    "id=TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.FIBRE_ANALYSIS_OPTIONS_LIST.VALUE.I.2",
+    "css=#TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX\.V\.R1\.FIBRE_ANALYSIS_OPTIONS_LIST\.CONTROL\.0 td:nth-child(2)",
+    "id=TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.FIBRE_ANALYSIS_OPTIONS_LIST.VALUE.I.0",
+    "id=TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.FIBRE_ANALYSIS_OPTIONS_LIST.VALUE.I.0",
+    "css=#TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX\.V\.R1\.FIBRE_ANALYSIS_OPTIONS_LIST\.CONTROL\.0 td:nth-child(2)",
+    "id=TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.FIBRE_ANALYSIS_OPTIONS_LIST.VALUE.I.4",
+]
+
+@handle_popup
+def click_NAD_result_elements(driver, NAD_result_elements):
+    """Iterates over the list of NAD result elements and performs actions."""
+    try:
+        for action in NAD_result_elements:
+            try:
+                element_type, element_selector = action.split("=")
+                if element_type == "id":
+                    locator = (By.ID, element_selector)
+                elif element_type == "css":
+                    locator = (By.CSS_SELECTOR, element_selector)
+                else:
+                    print(f"Unknown locator type '{element_type}'. Skipping this element.")
+                    continue
+
+                print(f"Attempting to click element: {element_selector}")
+                for attempt in range(3):
+                    try:
+                        element = WebDriverWait(driver, 20).until(
+                            EC.element_to_be_clickable(locator)
+                        )
+                        driver.execute_script("arguments[0].scrollIntoView(true);", element)
+                        element.click()
+                        print(f"Clicked on {element_selector} successfully!")
+                        capture_screenshot(driver, f"clicked_{element_selector.replace('#', '').replace('.', '')}.png")
+                        break
+                    except StaleElementReferenceException:
+                        print(f"Stale element reference encountered for {element_selector}. Retrying...")
+                        continue
+                    except TimeoutException:
+                        print(f"Timeout waiting for {element_selector}. Retrying...")
+                        continue
+                else:
+                    print(f"Failed to click on {element_selector} after 3 retries.")
+
+            except ValueError:
+                print(f"Malformed action: {action}. Expected format 'type=value'. Skipping.")
+                continue
+
+    except Exception as e:
+        print(f"An error occurred while performing actions on NAD result elements: {str(e)}")
+        capture_screenshot(driver, "nad_result_error.png")
+
+@handle_popup
+def click_Chrysotile_result_elements(driver, Chrysotile_result_elements):
+    """Iterates over the list of Chrysotile result elements and performs actions."""
+    try:
+        for action in Chrysotile_result_elements:
+            try:
+                element_type, element_selector = action.split("=")
+                if element_type == "id":
+                    locator = (By.ID, element_selector)
+                elif element_type == "css":
+                    locator = (By.CSS_SELECTOR, element_selector)
+                else:
+                    print(f"Unknown locator type '{element_type}'. Skipping this element.")
+                    continue
+
+                print(f"Attempting to click element: {element_selector}")
+                for attempt in range(3):
+                    try:
+                        element = WebDriverWait(driver, 20).until(
+                            EC.element_to_be_clickable(locator)
+                        )
+                        driver.execute_script("arguments[0].scrollIntoView(true);", element)
+                        element.click()
+                        print(f"Clicked on {element_selector} successfully!")
+                        capture_screenshot(driver, f"clicked_{element_selector.replace('#', '').replace('.', '')}.png")
+                        break
+                    except StaleElementReferenceException:
+                        print(f"Stale element reference encountered for {element_selector}. Retrying...")
+                        continue
+                    except TimeoutException:
+                        print(f"Timeout waiting for {element_selector}. Retrying...")
+                        continue
+                else:
+                    print(f"Failed to click on {element_selector} after 3 retries.")
+
+            except ValueError:
+                print(f"Malformed action: {action}. Expected format 'type=value'. Skipping.")
+                continue
+
+    except Exception as e:
+        print(f"An error occurred while performing actions on Chrysotile result elements: {str(e)}")
+        capture_screenshot(driver, "chrysotile_result_error.png")
+
+@handle_popup
+def click_amosite_result_elements(driver, amosite_result_elements):
+    """Iterates over the list of Amosite result elements and performs actions."""
+    try:
+        for action in amosite_result_elements:
+            try:
+                element_type, element_selector = action.split("=")
+                if element_type == "id":
+                    locator = (By.ID, element_selector)
+                elif element_type == "css":
+                    locator = (By.CSS_SELECTOR, element_selector)
+                else:
+                    print(f"Unknown locator type '{element_type}'. Skipping this element.")
+                    continue
+
+                print(f"Attempting to click element: {element_selector}")
+                for attempt in range(3):
+                    try:
+                        element = WebDriverWait(driver, 20).until(
+                            EC.element_to_be_clickable(locator)
+                        )
+                        driver.execute_script("arguments[0].scrollIntoView(true);", element)
+                        element.click()
+                        print(f"Clicked on {element_selector} successfully!")
+                        capture_screenshot(driver, f"clicked_{element_selector.replace('#', '').replace('.', '')}.png")
+                        break
+                    except StaleElementReferenceException:
+                        print(f"Stale element reference encountered for {element_selector}. Retrying...")
+                        continue
+                    except TimeoutException:
+                        print(f"Timeout waiting for {element_selector}. Retrying...")
+                        continue
+                else:
+                    print(f"Failed to click on {element_selector} after 3 retries.")
+
+            except ValueError:
+                print(f"Malformed action: {action}. Expected format 'type=value'. Skipping.")
+                continue
+
+    except Exception as e:
+        print(f"An error occurred while performing actions on Amosite result elements: {str(e)}")
+        capture_screenshot(driver, "amosite_result_error.png")
+
+def click_crocidolite_result_elements(driver, crocidolite_result_elements):
+    """Iterates over the list of Crocidolite result elements and performs actions."""
+    try:
+        for action in crocidolite_result_elements:
+            try:
+                element_type, element_selector = action.split("=")
+                if element_type == "id":
+                    locator = (By.ID, element_selector)
+                elif element_type == "css":
+                    locator = (By.CSS_SELECTOR, element_selector)
+                else:
+                    print(f"Unknown locator type '{element_type}'. Skipping this element.")
+                    continue
+
+                print(f"Attempting to click element: {element_selector}")
+                for attempt in range(3):
+                    try:
+                        element = WebDriverWait(driver, 20).until(
+                            EC.element_to_be_clickable(locator)
+                        )
+                        driver.execute_script("arguments[0].scrollIntoView(true);", element)
+                        element.click()
+                        print(f"Clicked on {element_selector} successfully!")
+                        capture_screenshot(driver, f"clicked_{element_selector.replace('#', '').replace('.', '')}.png")
+                        break
+                    except StaleElementReferenceException:
+                        print(f"Stale element reference encountered for {element_selector}. Retrying...")
+                        continue
+                    except TimeoutException:
+                        print(f"Timeout waiting for {element_selector}. Retrying...")
+                        continue
+                else:
+                    print(f"Failed to click on {element_selector} after 3 retries.")
+
+            except ValueError:
+                print(f"Malformed action: {action}. Expected format 'type=value'. Skipping.")
+                continue
+
+    except Exception as e:
+        print(f"An error occurred while performing actions on Crocidolite result elements: {str(e)}")
+        capture_screenshot(driver, "crocidolite_result_error.png")
+
+@handle_popup
+def click_save_button(driver):
+    """Clicks the save button on the Fibre Analysis page."""
+    try:
+        print("Attempting to click the save button...")
+
+        save_button = WebDriverWait(driver, 15).until(
+            EC.element_to_be_clickable((By.ID, "TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.V.R1.FOOTER_CONTROLS.PreSaveChecks.ICON"))
+        )
+
+        driver.execute_script("arguments[0].scrollIntoView(true);", save_button)
+        save_button.click()
+        print("Save button clicked successfully!")
+
+        WebDriverWait(driver, 15).until_not(
+            EC.presence_of_element_located((By.ID, "loading_indicator_id"))
+        )
+        print("Save action completed.")
+        capture_screenshot(driver, "Save_screenshot.png")
+
+        return True
+
+    except TimeoutException:
+        print("Error: Save button not clickable or not found.")
+        capture_screenshot(driver, "save_button_error.png")
+        return False
+    except Exception as e:
+        print(f"An error occurred while clicking the save button: {e}")
+        capture_screenshot(driver, "save_button_exception.png")
+        return False
+
+@handle_popup
+def close_fiber_analysis(driver):
+    """Closes the Fibre Analysis dialog by clicking on the close button."""
+    try:
+        close_button = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.ID, "A5dlg2.TITLE.TOOLS."))
+        )
+
+        close_button.click()
+
+        print("Fibre Analysis dialog closed successfully.")
+        return True
+    except TimeoutException:
+        print("Timeout: Close button not clickable or not found.")
+    except NoSuchElementException:
+        print("Error: Close button not found.")
+    except Exception as e:
+        print(f"An error occurred while closing the Fibre Analysis dialog: {str(e)}")
+    return False
 
 # ============================================================================
 # STATE MANAGEMENT FOR GITHUB ACTIONS
@@ -322,7 +945,6 @@ def count_samples_on_website(driver):
     try:
         print("Counting samples on website...")
         
-        # Get count from record count element
         try:
             record_count_element = WebDriverWait(driver, 15).until(
                 EC.presence_of_element_located((By.ID, "TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA.RECORDCOUNT.TOP"))
@@ -417,11 +1039,11 @@ def get_next_sample_to_process(df, state):
         return None, None, None
 
 # ============================================================================
-# SIMPLIFIED MAIN FUNCTION FOR GITHUB ACTIONS
+# MAIN FUNCTION WITH COMPLETE SAMPLE PROCESSING
 # ============================================================================
 
 def main():
-    """Main function that processes one sample per run."""
+    """Main function that processes one sample per run with complete functionality."""
     print(f"\n{'='*80}")
     print(f"🚀 GITHUB ACTIONS AUTOMATION - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"{'='*80}")
@@ -448,7 +1070,10 @@ def main():
         return
     
     sample_no = sample_data["Sample No."]
+    start_time_str = sample_data["Stereo Binocular Start Time"]
+    
     print(f"📋 Processing Project {project_number}, Sample {sample_no}")
+    print(f"   📅 Start Time: '{start_time_str}'")
     
     # Setup browser
     driver = setup_chrome_for_github()
@@ -493,47 +1118,105 @@ def main():
                 save_state(state)
                 return
         
-        # Navigate to sample (simplified for GitHub Actions)
-        target_page = (sample_no - 1) // 10
-        for _ in range(target_page):
-            try:
-                next_button = WebDriverWait(driver, 10).until(
-                    EC.element_to_be_clickable((By.ID, "TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.V.R1.FOOTER_CONTROLS.Next.ICON"))
-                )
-                next_button.click()
-                time.sleep(2)
-            except:
-                break
+        # Navigate to sample
+        clicked, _ = click_sample_row_with_next_button(driver, sample_no, 1)
+        if not clicked:
+            print(f"❌ Failed to click on Sample {sample_no}")
+            return
         
-        # Click on sample
-        row_index = (sample_no - 1) % 10 + 1
-        sample_selector = f"#TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA\\.TD\\.R{row_index}\\.SAMPLE_ID"
+        print(f"✅ Successfully navigated to Sample {sample_no}")
         
-        sample_element = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, sample_selector))
-        )
-        sample_element.click()
+        # Validate start time
+        if not start_time_str.strip():
+            print(f"❌ Start time is empty for Sample {sample_no}")
+            state['failed_samples'].append({
+                'project': project_number,
+                'sample': sample_no,
+                'reason': 'Empty start time',
+                'timestamp': datetime.now().isoformat()
+            })
+            state['current_sample_index'] += 1
+            save_state(state)
+            return
         
-        print(f"✅ Clicked on Sample {sample_no}")
+        # Process sample with all the original functions
+        print(f"📝 Starting complete sample processing...")
         
-        # For GitHub Actions, we'll simulate the 15-minute wait with a shorter delay
-        print("⏰ Simulating realistic analysis time...")
-        time.sleep(60)  # 1 minute instead of 15 for faster testing
+        project_df = df[df["Project Number"] == project_number].reset_index(drop=True)
+        
+        # Step 1: Set sample size
+        if not set_sample_size_value(driver):
+            print(f"❌ Failed to set sample size")
+            return
+        
+        # Step 2: Input stereo binocular start time
+        if not input_stereo_binocular_start_time(driver, project_df, sample_index):
+            print(f"❌ Failed to input start time")
+            return
+        
+        # Step 3: Set PLM end time
+        if not set_plm_end_time(driver, start_time_str):
+            print(f"❌ Failed to set PLM end time")
+            return
+        
+        # Step 4: Copy value to dropdown
+        if not copy_value_to_dropdown(driver):
+            print(f"❌ Failed to copy value to dropdown")
+            return
+        
+        # Step 5: Click analysis tab
+        if not click_analysis_tab(driver):
+            print(f"❌ Failed to click analysis tab")
+            return
+        
+        # Step 6: Handle analysis result
+        if not handle_analysis_1_result(driver=driver, df=project_df, row_index=sample_index):
+            print(f"❌ Failed to handle analysis result")
+            return
+        
+        # Step 7: Save the sample
+        if not click_save_button(driver):
+            print(f"❌ Failed to save Sample {sample_no}")
+            state['failed_samples'].append({
+                'project': project_number,
+                'sample': sample_no,
+                'reason': 'Save failed',
+                'timestamp': datetime.now().isoformat()
+            })
+        else:
+            print(f"✅ Successfully completed and saved Sample {sample_no}")
+            state['processed_samples'].append({
+                'project': project_number,
+                'sample': sample_no,
+                'timestamp': datetime.now().isoformat()
+            })
+            state['total_samples_processed'] += 1
         
         # Update state
         state['current_sample_index'] += 1
-        state['total_samples_processed'] += 1
         state['last_run_time'] = datetime.now().isoformat()
         
-        print(f"✅ Sample {sample_no} processed successfully!")
+        print(f"📊 Progress Update:")
+        print(f"   ✅ Samples Processed: {state['total_samples_processed']}")
+        print(f"   ❌ Samples Failed: {len(state['failed_samples'])}")
+        print(f"   🏷️  Current Project: {state['current_project']}")
+        print(f"   📍 Next Sample Index: {state['current_sample_index']}")
         
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"❌ Unexpected error: {e}")
+        state['failed_samples'].append({
+            'project': project_number,
+            'sample': sample_no,
+            'reason': f'Processing error: {str(e)}',
+            'timestamp': datetime.now().isoformat()
+        })
+        state['current_sample_index'] += 1
         
     finally:
         # Save state and cleanup
         save_state(state)
-        driver.quit()
+        if driver:
+            driver.quit()
 
 if __name__ == "__main__":
     main()
