@@ -1066,18 +1066,151 @@ def get_next_sample_to_process(df, state):
         print(f"❌ Error getting next sample: {e}")
         return None, None, None
 
+# Realistic Variable Timing System
+import random
+from datetime import datetime, timedelta
+import pytz
+
 # ============================================================================
-# UPDATED MAIN FUNCTION WITH REAL UK TIMING
+# REALISTIC TIMING PATTERNS
+# ============================================================================
+
+def get_timing_patterns():
+    """
+    Define multiple realistic timing patterns.
+    Each pattern represents minutes within an hour when samples should be processed.
+    """
+    patterns = [
+        [2, 18, 35, 52],      # Pattern A: Slightly irregular
+        [7, 23, 41, 58],      # Pattern B: Different spacing  
+        [4, 21, 37, 54],      # Pattern C: More variation
+        [9, 25, 43, 59],      # Pattern D: Later starts
+        [1, 19, 36, 53],      # Pattern E: Close to original but shifted
+        [6, 22, 39, 56],      # Pattern F: Evening out
+        [3, 20, 38, 55],      # Pattern G: Slightly compressed
+        [8, 24, 42, 57],      # Pattern H: Different rhythm
+        [5, 17, 34, 51],      # Pattern I: Close to 17-min but offset
+        [10, 26, 44, 60],     # Pattern J: 60 becomes 0 of next hour
+    ]
+    return patterns
+
+def should_process_sample_now(state):
+    """
+    Determine if we should process a sample based on current time and realistic patterns.
+    
+    Args:
+        state: Current automation state
+        
+    Returns:
+        tuple: (should_process: bool, updated_state: dict)
+    """
+    uk_time = get_uk_time()
+    current_hour = uk_time.hour
+    current_minute = uk_time.minute
+    
+    # Get current pattern info from state
+    current_pattern_index = state.get('current_pattern_index', 0)
+    last_pattern_hour = state.get('last_pattern_hour', -1)
+    last_sample_time = state.get('last_sample_time', None)
+    
+    patterns = get_timing_patterns()
+    
+    # Change pattern every 2-4 hours for more realism
+    hours_since_pattern_change = current_hour - last_pattern_hour
+    if hours_since_pattern_change < 0:  # Handle day rollover
+        hours_since_pattern_change += 24
+    
+    # Change pattern every 2-4 hours (randomized)
+    pattern_change_interval = state.get('pattern_change_interval', random.randint(2, 4))
+    
+    if hours_since_pattern_change >= pattern_change_interval or last_pattern_hour == -1:
+        # Time to change pattern
+        current_pattern_index = (current_pattern_index + 1) % len(patterns)
+        last_pattern_hour = current_hour
+        pattern_change_interval = random.randint(2, 4)  # Next change in 2-4 hours
+        
+        print(f"🔄 Switching to Pattern {current_pattern_index + 1} at hour {current_hour}")
+        print(f"📅 Next pattern change in {pattern_change_interval} hours")
+    
+    current_pattern = patterns[current_pattern_index]
+    
+    # Handle pattern minute 60 (becomes minute 0 of next hour)
+    adjusted_pattern = []
+    for minute in current_pattern:
+        if minute == 60:
+            adjusted_pattern.append(0)
+        else:
+            adjusted_pattern.append(minute)
+    
+    print(f"🕐 Current time: {uk_time.strftime('%H:%M')}")
+    print(f"📊 Using Pattern {current_pattern_index + 1}: {current_pattern}")
+    print(f"🎯 Target minutes this hour: {adjusted_pattern}")
+    
+    # Check if current minute matches any target minute in the pattern
+    should_process = current_minute in adjusted_pattern
+    
+    # Additional check: don't process if we just processed recently (avoid double runs)
+    if should_process and last_sample_time:
+        try:
+            last_time = datetime.fromisoformat(last_sample_time.replace('Z', '+00:00'))
+            time_since_last = (uk_time.replace(tzinfo=None) - last_time.replace(tzinfo=None)).total_seconds()
+            
+            # Don't process if we processed within the last 10 minutes
+            if time_since_last < 600:  # 10 minutes
+                print(f"⏸️  Skipping - processed sample {time_since_last/60:.1f} minutes ago")
+                should_process = False
+        except:
+            pass  # If parsing fails, proceed anyway
+    
+    # Update state
+    updated_state = state.copy()
+    updated_state.update({
+        'current_pattern_index': current_pattern_index,
+        'last_pattern_hour': last_pattern_hour,
+        'pattern_change_interval': pattern_change_interval,
+        'current_pattern': current_pattern,
+        'last_timing_check': uk_time.isoformat()
+    })
+    
+    if should_process:
+        print(f"✅ Time to process sample! (minute {current_minute} matches pattern)")
+        updated_state['last_sample_time'] = uk_time.isoformat()
+    else:
+        if current_minute in adjusted_pattern:
+            print(f"⏸️  Skipping - too soon since last sample")
+        else:
+            next_target = min([m for m in adjusted_pattern if m > current_minute] or [adjusted_pattern[0] + 60])
+            if next_target > 59:
+                next_target_str = f"{(current_hour + 1) % 24:02d}:{(next_target - 60):02d}"
+            else:
+                next_target_str = f"{current_hour:02d}:{next_target:02d}"
+            print(f"⏰ Next sample scheduled for: {next_target_str}")
+    
+    return should_process, updated_state
+
+# ============================================================================
+# MODIFIED MAIN FUNCTION WITH VARIABLE TIMING
 # ============================================================================
 
 def main():
-    """Main function with real UK timing system."""
+    """Main function with realistic variable timing."""
     print(f"\n{'='*80}")
-    print(f"🚀 REAL-TIME UK AUTOMATION - {get_uk_time().strftime('%Y-%m-%d %H:%M:%S %Z')}")
+    print(f"🚀 REALISTIC VARIABLE TIMING AUTOMATION - {get_uk_time().strftime('%Y-%m-%d %H:%M:%S %Z')}")
     print(f"{'='*80}")
     
     # Load state
     state = load_state()
+    
+    # Check if we should process a sample right now
+    should_process, updated_state = should_process_sample_now(state)
+    
+    if not should_process:
+        print(f"⏸️  Not time to process a sample yet. Exiting until next check.")
+        # Save the updated state (pattern info) even if we're not processing
+        save_state(updated_state)
+        return
+    
+    print(f"🎯 Time to process a sample! Starting automation...")
     
     # Load data
     spreadsheet_url = "https://docs.google.com/spreadsheets/d/1cK7Agui9UMlPr2p1K2jI3jtZxyJuYtm7jP5hi9g4i4Q/export?format=csv&gid=433984109"
@@ -1086,22 +1219,24 @@ def main():
     df = load_data_from_google_sheets(spreadsheet_url, columns_to_extract)
     if df is None:
         print("❌ Failed to load data")
+        save_state(updated_state)
         return
     
     # Note: We still need the spreadsheet for Analysis 1 column, but ignore the start time
     df["Stereo Binocular Start Time"] = df["Stereo Binocular Start Time"].astype(str).fillna("")
     
     # Get next sample
-    project_number, sample_data, sample_index = get_next_sample_to_process(df, state)
+    project_number, sample_data, sample_index = get_next_sample_to_process(df, updated_state)
     
     if project_number is None:
         print("🏁 All samples completed!")
+        save_state(updated_state)
         return
     
     sample_no = sample_data["Sample No."]
     
     print(f"📋 Processing Project {project_number}, Sample {sample_no}")
-    print(f"🕐 Using real UK time instead of spreadsheet time")
+    print(f"🕐 Using real UK time with variable timing pattern")
     
     # Setup browser
     driver = setup_chrome_for_github()
@@ -1110,10 +1245,12 @@ def main():
         # Login and navigate
         if not login(driver, "ryan", "Crucial12!"):
             print("❌ Login failed")
+            save_state(updated_state)
             return
         
         if not click_lab_button(driver) or not click_lab_project_list_button(driver):
             print("❌ Navigation failed")
+            save_state(updated_state)
             return
         
         # Load project
@@ -1122,34 +1259,38 @@ def main():
         
         if not input_project_number(driver, project_number):
             print("❌ Failed to input project")
+            save_state(updated_state)
             return
         
         if not press_enter_or_search_on_project_number(driver, project_number):
             print("❌ Failed to search project")
+            save_state(updated_state)
             return
         
         verify_project_numbers(driver)
         
         if not click_view_fibre_analysis_button(driver):
             print("❌ Failed to open analysis")
+            save_state(updated_state)
             return
         
         # Verify sample counts (first time only)
-        if project_number not in state['completed_projects'] and state['current_sample_index'] == 0:
+        if project_number not in updated_state['completed_projects'] and updated_state['current_sample_index'] == 0:
             project_df = df[df["Project Number"] == project_number]
             verification = verify_sample_counts(driver, project_df, project_number)
             
             if not verification['match']:
                 print(f"❌ Sample count mismatch: {verification['reason']}")
-                state['completed_projects'].append(project_number)
-                state['current_sample_index'] = 0
-                save_state(state)
+                updated_state['completed_projects'].append(project_number)
+                updated_state['current_sample_index'] = 0
+                save_state(updated_state)
                 return
         
         # Navigate to sample
         clicked, _ = click_sample_row_with_next_button(driver, sample_no, 1)
         if not clicked:
             print(f"❌ Failed to click on Sample {sample_no}")
+            save_state(updated_state)
             return
         
         print(f"✅ Successfully navigated to Sample {sample_no}")
@@ -1157,44 +1298,50 @@ def main():
         # Process sample with real timing
         project_df = df[df["Project Number"] == project_number].reset_index(drop=True)
         
-        print(f"📝 Starting sample processing with real UK timing...")
+        print(f"📝 Starting sample processing with realistic timing...")
         
         # Step 1: Set sample size
         if not set_sample_size_value(driver):
             print(f"❌ Failed to set sample size")
+            save_state(updated_state)
             return
         
         # Step 2: Input realistic start time (calculated from current UK time)
         success, start_time_str = input_realistic_stereo_binocular_start_time(driver)
         if not success:
             print(f"❌ Failed to input start time")
+            save_state(updated_state)
             return
         
         # Step 3: Set realistic end time (current UK time)
         if not set_realistic_plm_end_time(driver):
             print(f"❌ Failed to set PLM end time")
+            save_state(updated_state)
             return
         
         # Step 4: Copy value to dropdown
         if not copy_value_to_dropdown(driver):
             print(f"❌ Failed to copy value to dropdown")
+            save_state(updated_state)
             return
         
         # Step 5: Click analysis tab
         if not click_analysis_tab(driver):
             print(f"❌ Failed to click analysis tab")
+            save_state(updated_state)
             return
         
         # Step 6: Handle analysis result
         if not handle_analysis_1_result(driver=driver, df=project_df, row_index=sample_index):
             print(f"❌ Failed to handle analysis result")
+            save_state(updated_state)
             return
         
         # Step 7: Save immediately (end time will match save time)
         print(f"💾 Saving Sample {sample_no} at current UK time...")
         if not click_save_button(driver):
             print(f"❌ Failed to save Sample {sample_no}")
-            state['failed_samples'].append({
+            updated_state['failed_samples'].append({
                 'project': project_number,
                 'sample': sample_no,
                 'reason': 'Save failed',
@@ -1202,38 +1349,39 @@ def main():
             })
         else:
             print(f"✅ Successfully completed and saved Sample {sample_no}")
-            state['processed_samples'].append({
+            updated_state['processed_samples'].append({
                 'project': project_number,
                 'sample': sample_no,
                 'timestamp': get_uk_time().isoformat(),
-                'save_time': get_uk_time().strftime('%d/%m/%Y %H:%M:%S')
+                'save_time': get_uk_time().strftime('%d/%m/%Y %H:%M:%S'),
+                'pattern_used': updated_state.get('current_pattern', 'unknown')
             })
-            state['total_samples_processed'] += 1
+            updated_state['total_samples_processed'] += 1
         
         # Update state
-        state['current_sample_index'] += 1
-        state['last_run_time'] = get_uk_time().isoformat()
+        updated_state['current_sample_index'] += 1
+        updated_state['last_run_time'] = get_uk_time().isoformat()
         
         print(f"📊 Progress Update:")
-        print(f"   ✅ Samples Processed: {state['total_samples_processed']}")
-        print(f"   ❌ Samples Failed: {len(state['failed_samples'])}")
-        print(f"   🏷️  Current Project: {state['current_project']}")
-        print(f"   📍 Next Sample Index: {state['current_sample_index']}")
-        print(f"   🕐 Next run in 17 minutes at: {(get_uk_time() + timedelta(minutes=17)).strftime('%H:%M:%S')}")
+        print(f"   ✅ Samples Processed: {updated_state['total_samples_processed']}")
+        print(f"   ❌ Samples Failed: {len(updated_state['failed_samples'])}")
+        print(f"   🏷️  Current Project: {updated_state['current_project']}")
+        print(f"   📍 Next Sample Index: {updated_state['current_sample_index']}")
+        print(f"   🎯 Current Pattern: {updated_state.get('current_pattern', 'unknown')}")
         
     except Exception as e:
         print(f"❌ Unexpected error: {e}")
-        state['failed_samples'].append({
+        updated_state['failed_samples'].append({
             'project': project_number,
             'sample': sample_no,
             'reason': f'Processing error: {str(e)}',
             'timestamp': get_uk_time().isoformat()
         })
-        state['current_sample_index'] += 1
+        updated_state['current_sample_index'] += 1
         
     finally:
         # Save state and cleanup
-        save_state(state)
+        save_state(updated_state)
         if driver:
             driver.quit()
 
