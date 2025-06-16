@@ -29,28 +29,29 @@ jobs:
         pip install -r requirements.txt
         
     - name: Download state file from previous run
-      run: |
-        curl -L -o automation_state.json \
-          "https://github.com/${{ github.repository }}/releases/latest/download/automation_state.json" || \
-          echo '{"current_project": null, "current_sample_index": 0, "processed_samples": [], "failed_samples": [], "completed_projects": [], "last_run_time": null, "total_samples_processed": 0}' > automation_state.json
+      uses: actions/download-artifact@v3
+      with:
+        name: automation-state
+        path: .
+      continue-on-error: true
     
+    - name: Create default state if none exists
+      run: |
+        if [ ! -f automation_state.json ]; then
+          echo '{"current_project": null, "current_sample_index": 0, "processed_samples": [], "failed_samples": [], "completed_projects": [], "last_run_time": null, "total_samples_processed": 0}' > automation_state.json
+        fi
+        
     - name: Run automation script
       run: python automation_script.py
       
     - name: Upload updated state file
       if: always()
-      run: |
-        # Create a release with the updated state file
-        TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-        gh release create "state-$TIMESTAMP" automation_state.json \
-          --title "Automation State $TIMESTAMP" \
-          --notes "Automated state update at $(date)" \
-          --latest
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: actions/upload-artifact@v3
+      with:
+        name: automation-state
+        path: automation_state.json
         
     - name: Notify on failure
       if: failure()
       run: |
         echo "❌ Automation failed at $(date)"
-        # You can add email notifications here if needed
