@@ -49,6 +49,8 @@ jobs:
       run: |
         echo "🕐 Checking if it's time to process a sample..."
         python automation_script.py
+      env:
+        LOGIN_PASSWORD: ${{ secrets.LOGIN_PASSWORD }}
         
     - name: Commit updated state file
       run: |
