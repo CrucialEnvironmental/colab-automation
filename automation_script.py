@@ -1,4 +1,4 @@
-# Complete Automation Script for GitHub Actions
+# Complete Automation Script with Real UK Timing System
 import pandas as pd
 import requests
 from io import StringIO
@@ -20,6 +20,45 @@ import json
 import os
 import sys
 from functools import wraps
+import pytz
+
+# ============================================================================
+# REAL-TIME UK TIMING FUNCTIONS
+# ============================================================================
+
+def get_uk_time():
+    """Get current UK time (handles BST/GMT automatically)"""
+    uk_tz = pytz.timezone('Europe/London')
+    return datetime.now(uk_tz)
+
+def calculate_realistic_times():
+    """
+    Calculate realistic start and end times based on current UK time.
+    End time = now (when we save)
+    Start time = end time minus 16 minutes (+/- 30 seconds)
+    
+    Returns:
+        tuple: (start_time_str, end_time_str) in format 'dd/mm/yyyy HH:MM:SS'
+    """
+    # End time is current UK time (when we save)
+    end_time = get_uk_time()
+    
+    # Start time is 16 minutes ago, plus/minus 30 seconds for realism
+    random_seconds = random.randint(-30, 30)  # +/- 30 seconds variation
+    minutes_ago = 16 * 60 + random_seconds  # 16 minutes in seconds, plus variation
+    
+    start_time = end_time - timedelta(seconds=minutes_ago)
+    
+    # Format both times
+    start_time_str = start_time.strftime('%d/%m/%Y %H:%M:%S')
+    end_time_str = end_time.strftime('%d/%m/%Y %H:%M:%S')
+    
+    print(f"🕐 Calculated realistic times:")
+    print(f"   📅 Start Time: {start_time_str}")
+    print(f"   🏁 End Time: {end_time_str}")
+    print(f"   ⏱️  Duration: {minutes_ago/60:.1f} minutes")
+    
+    return start_time_str, end_time_str
 
 # ============================================================================
 # GITHUB ACTIONS SPECIFIC SETUP
@@ -381,45 +420,67 @@ def click_sample_row_with_next_button(driver, sample_no, last_sample_no=1):
 
     return False, last_sample_no
 
+# ============================================================================
+# MODIFIED TIMING FUNCTIONS - USING REAL UK TIME
+# ============================================================================
+
 @handle_popup
-def input_stereo_binocular_start_time(driver, df, row_index):
-    """Inputs the Stereo Binocular Start Time for a given sample."""
+def input_realistic_stereo_binocular_start_time(driver):
+    """
+    Calculate and input a realistic Stereo Binocular Start Time based on current UK time.
+    This replaces the old function that read from spreadsheet.
+    """
     try:
-        if not isinstance(df, pd.DataFrame):
-            raise ValueError(f"Invalid df type: {type(df)}. Expected pandas.DataFrame.")
-
-        if df.empty:
-            print("Error: The DataFrame is empty.")
-            return False
-
-        if row_index >= len(df):
-            print("Error: Row index exceeds the length of the DataFrame.")
-            return False
-
-        time_string = df.loc[row_index, "Stereo Binocular Start Time"]
-        if not time_string or pd.isna(time_string):
-            print(f"Error: Missing Stereo Binocular Start Time for row {row_index}.")
-            return False
-
+        start_time_str, _ = calculate_realistic_times()
+        
         input_field = WebDriverWait(driver, 10).until(
             EC.visibility_of_element_located((By.ID, "TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.V.R1.STEREOBINOCULARSTARTTIME"))
         )
 
         input_field.clear()
-        input_field.send_keys(time_string)
-        print(f"Stereo Binocular Start Time '{time_string}' input successfully for Sample No. {df.loc[row_index, 'Sample No.']}.")
+        input_field.send_keys(start_time_str)
+        print(f"✅ Stereo Binocular Start Time set to: {start_time_str}")
+
+        return True, start_time_str
+
+    except TimeoutException:
+        print("❌ Error: Stereo Binocular Start Time input field not found.")
+        return False, None
+    except Exception as e:
+        print(f"❌ An error occurred while inputting Stereo Binocular Start Time: {e}")
+        return False, None
+
+@handle_popup
+def set_realistic_plm_end_time(driver):
+    """
+    Set PLM end time to current UK time (when we're about to save).
+    This replaces the old function that calculated from start time.
+    """
+    try:
+        _, end_time_str = calculate_realistic_times()
+        
+        plm_end_time_field = WebDriverWait(driver, 10).until(
+            EC.visibility_of_element_located((By.ID, "TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.V.R1.PLMENDTIME"))
+        )
+
+        plm_end_time_field.clear()
+        plm_end_time_field.send_keys(end_time_str)
+
+        print(f"✅ PLM End Time set to current UK time: {end_time_str}")
+        capture_screenshot(driver, "realistic_plm_end_time_set.png")
 
         return True
 
     except TimeoutException:
-        print(f"Error: Stereo Binocular Start Time input field not found for row {row_index}.")
-        return False
-    except ValueError as ve:
-        print(f"ValueError: {ve}")
+        print("❌ Error: PLM End Time input field not found.")
         return False
     except Exception as e:
-        print(f"An error occurred while inputting Stereo Binocular Start Time for row {row_index}: {e}")
+        print("❌ An error occurred while setting PLM End Time:", str(e))
         return False
+
+# ============================================================================
+# OTHER SAMPLE PROCESSING FUNCTIONS (UNCHANGED)
+# ============================================================================
 
 @handle_popup
 def copy_value_to_dropdown(driver):
@@ -483,39 +544,6 @@ def set_sample_size_value(driver):
         return False
     except Exception as e:
         print(f"❌ An error occurred while setting sample size: {str(e)}")
-        return False
-
-@handle_popup
-def set_plm_end_time(driver, stereo_start_time):
-    try:
-        if stereo_start_time:
-            stereo_start_datetime = datetime.strptime(stereo_start_time, '%d/%m/%Y %H:%M:%S')
-
-            new_time = stereo_start_datetime + timedelta(minutes=16, seconds=random.randint(0, 60))
-
-            formatted_time = new_time.strftime('%d/%m/%Y %H:%M:%S')
-
-            plm_end_time_field = WebDriverWait(driver, 10).until(
-                EC.visibility_of_element_located((By.ID, "TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.V.R1.PLMENDTIME"))
-            )
-
-            plm_end_time_field.clear()
-            plm_end_time_field.send_keys(formatted_time)
-
-            print("PLM end time set successfully!")
-            capture_screenshot(driver, "plm_end_time_set.png")
-
-            return True
-
-        else:
-            print("Error: Stereo Binocular Start Time is empty.")
-            return False
-
-    except TimeoutException:
-        print("Error: PLM End Time input field not found.")
-        return False
-    except Exception as e:
-        print("An error occurred while setting PLM End Time:", str(e))
         return False
 
 @handle_popup
@@ -1039,13 +1067,13 @@ def get_next_sample_to_process(df, state):
         return None, None, None
 
 # ============================================================================
-# MAIN FUNCTION WITH COMPLETE SAMPLE PROCESSING
+# UPDATED MAIN FUNCTION WITH REAL UK TIMING
 # ============================================================================
 
 def main():
-    """Main function that processes one sample per run with complete functionality."""
+    """Main function with real UK timing system."""
     print(f"\n{'='*80}")
-    print(f"🚀 GITHUB ACTIONS AUTOMATION - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"🚀 REAL-TIME UK AUTOMATION - {get_uk_time().strftime('%Y-%m-%d %H:%M:%S %Z')}")
     print(f"{'='*80}")
     
     # Load state
@@ -1060,6 +1088,7 @@ def main():
         print("❌ Failed to load data")
         return
     
+    # Note: We still need the spreadsheet for Analysis 1 column, but ignore the start time
     df["Stereo Binocular Start Time"] = df["Stereo Binocular Start Time"].astype(str).fillna("")
     
     # Get next sample
@@ -1070,10 +1099,9 @@ def main():
         return
     
     sample_no = sample_data["Sample No."]
-    start_time_str = sample_data["Stereo Binocular Start Time"]
     
     print(f"📋 Processing Project {project_number}, Sample {sample_no}")
-    print(f"   📅 Start Time: '{start_time_str}'")
+    print(f"🕐 Using real UK time instead of spreadsheet time")
     
     # Setup browser
     driver = setup_chrome_for_github()
@@ -1126,36 +1154,24 @@ def main():
         
         print(f"✅ Successfully navigated to Sample {sample_no}")
         
-        # Validate start time
-        if not start_time_str.strip():
-            print(f"❌ Start time is empty for Sample {sample_no}")
-            state['failed_samples'].append({
-                'project': project_number,
-                'sample': sample_no,
-                'reason': 'Empty start time',
-                'timestamp': datetime.now().isoformat()
-            })
-            state['current_sample_index'] += 1
-            save_state(state)
-            return
-        
-        # Process sample with all the original functions
-        print(f"📝 Starting complete sample processing...")
-        
+        # Process sample with real timing
         project_df = df[df["Project Number"] == project_number].reset_index(drop=True)
+        
+        print(f"📝 Starting sample processing with real UK timing...")
         
         # Step 1: Set sample size
         if not set_sample_size_value(driver):
             print(f"❌ Failed to set sample size")
             return
         
-        # Step 2: Input stereo binocular start time
-        if not input_stereo_binocular_start_time(driver, project_df, sample_index):
+        # Step 2: Input realistic start time (calculated from current UK time)
+        success, start_time_str = input_realistic_stereo_binocular_start_time(driver)
+        if not success:
             print(f"❌ Failed to input start time")
             return
         
-        # Step 3: Set PLM end time
-        if not set_plm_end_time(driver, start_time_str):
+        # Step 3: Set realistic end time (current UK time)
+        if not set_realistic_plm_end_time(driver):
             print(f"❌ Failed to set PLM end time")
             return
         
@@ -1174,33 +1190,36 @@ def main():
             print(f"❌ Failed to handle analysis result")
             return
         
-        # Step 7: Save the sample
+        # Step 7: Save immediately (end time will match save time)
+        print(f"💾 Saving Sample {sample_no} at current UK time...")
         if not click_save_button(driver):
             print(f"❌ Failed to save Sample {sample_no}")
             state['failed_samples'].append({
                 'project': project_number,
                 'sample': sample_no,
                 'reason': 'Save failed',
-                'timestamp': datetime.now().isoformat()
+                'timestamp': get_uk_time().isoformat()
             })
         else:
             print(f"✅ Successfully completed and saved Sample {sample_no}")
             state['processed_samples'].append({
                 'project': project_number,
                 'sample': sample_no,
-                'timestamp': datetime.now().isoformat()
+                'timestamp': get_uk_time().isoformat(),
+                'save_time': get_uk_time().strftime('%d/%m/%Y %H:%M:%S')
             })
             state['total_samples_processed'] += 1
         
         # Update state
         state['current_sample_index'] += 1
-        state['last_run_time'] = datetime.now().isoformat()
+        state['last_run_time'] = get_uk_time().isoformat()
         
         print(f"📊 Progress Update:")
         print(f"   ✅ Samples Processed: {state['total_samples_processed']}")
         print(f"   ❌ Samples Failed: {len(state['failed_samples'])}")
         print(f"   🏷️  Current Project: {state['current_project']}")
         print(f"   📍 Next Sample Index: {state['current_sample_index']}")
+        print(f"   🕐 Next run in 17 minutes at: {(get_uk_time() + timedelta(minutes=17)).strftime('%H:%M:%S')}")
         
     except Exception as e:
         print(f"❌ Unexpected error: {e}")
@@ -1208,7 +1227,7 @@ def main():
             'project': project_number,
             'sample': sample_no,
             'reason': f'Processing error: {str(e)}',
-            'timestamp': datetime.now().isoformat()
+            'timestamp': get_uk_time().isoformat()
         })
         state['current_sample_index'] += 1
         
