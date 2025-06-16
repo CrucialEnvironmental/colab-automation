@@ -1077,26 +1077,27 @@ import pytz
 
 def get_timing_patterns():
     """
-    Define multiple realistic timing patterns.
-    Each pattern represents minutes within an hour when samples should be processed.
+    Define realistic timing patterns with PROPER 17+ minute gaps.
+    Each sample takes 17 minutes, so minimum 17-20 minute spacing.
+    Target: ~3 samples per hour (every 20 minutes)
     """
     patterns = [
-        [2, 18, 35, 52],      # Pattern A: Slightly irregular
-        [7, 23, 41, 58],      # Pattern B: Different spacing  
-        [4, 21, 37, 54],      # Pattern C: More variation
-        [9, 25, 43, 59],      # Pattern D: Later starts
-        [1, 19, 36, 53],      # Pattern E: Close to original but shifted
-        [6, 22, 39, 56],      # Pattern F: Evening out
-        [3, 20, 38, 55],      # Pattern G: Slightly compressed
-        [8, 24, 42, 57],      # Pattern H: Different rhythm
-        [5, 17, 34, 51],      # Pattern I: Close to 17-min but offset
-        [10, 26, 44, 60],     # Pattern J: 60 becomes 0 of next hour
+        [2, 22, 42],              # Pattern A: Every 20 minutes (3 per hour)
+        [5, 25, 45],              # Pattern B: Every 20 minutes, offset
+        [8, 28, 48],              # Pattern C: Every 20 minutes, offset
+        [1, 23, 45],              # Pattern D: Slightly irregular (22 min gaps)
+        [7, 27, 47],              # Pattern E: Every 20 minutes
+        [4, 26, 48],              # Pattern F: Slightly irregular (22 min gaps)
+        [10, 30, 50],             # Pattern G: Every 20 minutes
+        [3, 25, 47],              # Pattern H: Slightly irregular (22 min gaps)
+        [6, 28, 50],              # Pattern I: Slightly irregular (22 min gaps)
+        [9, 31, 53],              # Pattern J: Slightly irregular (22 min gaps)
     ]
     return patterns
 
 def should_process_sample_now(state):
     """
-    Determine if we should process a sample based on current time and realistic patterns.
+    Determine if we should process a sample with proper 17+ minute spacing.
     
     Args:
         state: Current automation state
@@ -1134,30 +1135,34 @@ def should_process_sample_now(state):
     
     current_pattern = patterns[current_pattern_index]
     
-    # Handle pattern minute 60 (becomes minute 0 of next hour)
-    adjusted_pattern = []
-    for minute in current_pattern:
-        if minute == 60:
-            adjusted_pattern.append(0)
-        else:
-            adjusted_pattern.append(minute)
-    
     print(f"🕐 Current time: {uk_time.strftime('%H:%M')}")
     print(f"📊 Using Pattern {current_pattern_index + 1}: {current_pattern}")
-    print(f"🎯 Target minutes this hour: {adjusted_pattern}")
+    print(f"🎯 Target minutes this hour: {current_pattern}")
     
-    # Check if current minute matches any target minute in the pattern
-    should_process = current_minute in adjusted_pattern
+    # Check if current minute matches any target minute (within 2 minutes for flexibility)
+    should_process = False
+    closest_target = None
     
-    # Additional check: don't process if we just processed recently (avoid double runs)
+    for target_minute in current_pattern:
+        # Allow +/- 2 minutes flexibility for GitHub Actions delays
+        if abs(current_minute - target_minute) <= 2:
+            should_process = True
+            closest_target = target_minute
+            break
+    
+    if should_process:
+        print(f"✅ Time matches target minute {closest_target} (±2 min flexibility)")
+    
+    # CRITICAL: Enforce 17+ minute gap between samples
     if should_process and last_sample_time:
         try:
             last_time = datetime.fromisoformat(last_sample_time.replace('Z', '+00:00'))
             time_since_last = (uk_time.replace(tzinfo=None) - last_time.replace(tzinfo=None)).total_seconds()
             
-            # Don't process if we processed within the last 10 minutes
-            if time_since_last < 600:  # 10 minutes
-                print(f"⏸️  Skipping - processed sample {time_since_last/60:.1f} minutes ago")
+            # Don't process if less than 17 minutes since last sample
+            if time_since_last < 1020:  # 17 minutes = 1020 seconds
+                print(f"⏸️  BLOCKING: Only {time_since_last/60:.1f} minutes since last sample")
+                print(f"⏸️  Need at least 17 minutes gap. Next opportunity in {(1020-time_since_last)/60:.1f} minutes")
                 should_process = False
         except:
             pass  # If parsing fails, proceed anyway
@@ -1173,21 +1178,20 @@ def should_process_sample_now(state):
     })
     
     if should_process:
-        print(f"✅ Time to process sample! (minute {current_minute} matches pattern)")
+        print(f"✅ Time to process sample! (target minute {closest_target})")
         updated_state['last_sample_time'] = uk_time.isoformat()
     else:
-        if current_minute in adjusted_pattern:
-            print(f"⏸️  Skipping - too soon since last sample")
+        # Find next opportunity
+        next_targets = [m for m in current_pattern if m > current_minute]
+        if not next_targets:
+            next_target_str = f"{(current_hour + 1) % 24:02d}:{current_pattern[0]:02d}"
         else:
-            next_target = min([m for m in adjusted_pattern if m > current_minute] or [adjusted_pattern[0] + 60])
-            if next_target > 59:
-                next_target_str = f"{(current_hour + 1) % 24:02d}:{(next_target - 60):02d}"
-            else:
-                next_target_str = f"{current_hour:02d}:{next_target:02d}"
-            print(f"⏰ Next sample scheduled for: {next_target_str}")
+            next_target = min(next_targets)
+            next_target_str = f"{current_hour:02d}:{next_target:02d}"
+        print(f"⏰ Next sample opportunity: {next_target_str}")
     
     return should_process, updated_state
-
+    
 # ============================================================================
 # MODIFIED MAIN FUNCTION WITH VARIABLE TIMING
 # ============================================================================
