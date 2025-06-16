@@ -1075,123 +1075,79 @@ import pytz
 # REALISTIC TIMING PATTERNS
 # ============================================================================
 
-def get_timing_patterns():
-    """
-    Define realistic timing patterns with PROPER 17+ minute gaps.
-    Each sample takes 17 minutes, so minimum 17-20 minute spacing.
-    Target: ~3 samples per hour (every 20 minutes)
-    """
-    patterns = [
-        [2, 22, 42],              # Pattern A: Every 20 minutes (3 per hour)
-        [5, 25, 45],              # Pattern B: Every 20 minutes, offset
-        [8, 28, 48],              # Pattern C: Every 20 minutes, offset
-        [1, 23, 45],              # Pattern D: Slightly irregular (22 min gaps)
-        [7, 27, 47],              # Pattern E: Every 20 minutes
-        [4, 26, 48],              # Pattern F: Slightly irregular (22 min gaps)
-        [10, 30, 50],             # Pattern G: Every 20 minutes
-        [3, 25, 47],              # Pattern H: Slightly irregular (22 min gaps)
-        [6, 28, 50],              # Pattern I: Slightly irregular (22 min gaps)
-        [9, 31, 53],              # Pattern J: Slightly irregular (22 min gaps)
-    ]
-    return patterns
-
 def should_process_sample_now(state):
     """
-    Determine if we should process a sample with proper 17+ minute spacing.
-    
-    Args:
-        state: Current automation state
-        
-    Returns:
-        tuple: (should_process: bool, updated_state: dict)
+    Rolling timing: Run 17-19 minutes after the last sample was started.
+    This creates a natural rolling schedule that shifts throughout the day.
     """
     uk_time = get_uk_time()
-    current_hour = uk_time.hour
-    current_minute = uk_time.minute
-    
-    # Get current pattern info from state
-    current_pattern_index = state.get('current_pattern_index', 0)
-    last_pattern_hour = state.get('last_pattern_hour', -1)
-    last_sample_time = state.get('last_sample_time', None)
-    
-    patterns = get_timing_patterns()
-    
-    # Change pattern every 2-4 hours for more realism
-    hours_since_pattern_change = current_hour - last_pattern_hour
-    if hours_since_pattern_change < 0:  # Handle day rollover
-        hours_since_pattern_change += 24
-    
-    # Change pattern every 2-4 hours (randomized)
-    pattern_change_interval = state.get('pattern_change_interval', random.randint(2, 4))
-    
-    if hours_since_pattern_change >= pattern_change_interval or last_pattern_hour == -1:
-        # Time to change pattern
-        current_pattern_index = (current_pattern_index + 1) % len(patterns)
-        last_pattern_hour = current_hour
-        pattern_change_interval = random.randint(2, 4)  # Next change in 2-4 hours
-        
-        print(f"🔄 Switching to Pattern {current_pattern_index + 1} at hour {current_hour}")
-        print(f"📅 Next pattern change in {pattern_change_interval} hours")
-    
-    current_pattern = patterns[current_pattern_index]
     
     print(f"🕐 Current time: {uk_time.strftime('%H:%M')}")
-    print(f"📊 Using Pattern {current_pattern_index + 1}: {current_pattern}")
-    print(f"🎯 Target minutes this hour: {current_pattern}")
     
-    # Check if current minute matches any target minute (within 2 minutes for flexibility)
-    should_process = False
-    closest_target = None
+    last_sample_time = state.get('last_sample_time', None)
     
-    for target_minute in current_pattern:
-        # Allow +/- 2 minutes flexibility for GitHub Actions delays
-        if abs(current_minute - target_minute) <= 2:
-            should_process = True
-            closest_target = target_minute
-            break
-    
-    if should_process:
-        print(f"✅ Time matches target minute {closest_target} (±2 min flexibility)")
-    
-    # CRITICAL: Enforce 17+ minute gap between samples
-    if should_process and last_sample_time:
-        try:
-            last_time = datetime.fromisoformat(last_sample_time.replace('Z', '+00:00'))
-            time_since_last = (uk_time.replace(tzinfo=None) - last_time.replace(tzinfo=None)).total_seconds()
-            
-            # Don't process if less than 17 minutes since last sample
-            if time_since_last < 1020:  # 17 minutes = 1020 seconds
-                print(f"⏸️  BLOCKING: Only {time_since_last/60:.1f} minutes since last sample")
-                print(f"⏸️  Need at least 17 minutes gap. Next opportunity in {(1020-time_since_last)/60:.1f} minutes")
-                should_process = False
-        except:
-            pass  # If parsing fails, proceed anyway
-    
-    # Update state
-    updated_state = state.copy()
-    updated_state.update({
-        'current_pattern_index': current_pattern_index,
-        'last_pattern_hour': last_pattern_hour,
-        'pattern_change_interval': pattern_change_interval,
-        'current_pattern': current_pattern,
-        'last_timing_check': uk_time.isoformat()
-    })
-    
-    if should_process:
-        print(f"✅ Time to process sample! (target minute {closest_target})")
+    # If no previous sample, start immediately
+    if not last_sample_time:
+        print(f"🚀 No previous sample found - starting first sample!")
+        updated_state = state.copy()
         updated_state['last_sample_time'] = uk_time.isoformat()
-    else:
-        # Find next opportunity
-        next_targets = [m for m in current_pattern if m > current_minute]
-        if not next_targets:
-            next_target_str = f"{(current_hour + 1) % 24:02d}:{current_pattern[0]:02d}"
+        updated_state['last_timing_check'] = uk_time.isoformat()
+        return True, updated_state
+    
+    # Calculate time since last sample
+    try:
+        last_time = datetime.fromisoformat(last_sample_time.replace('Z', '+00:00'))
+        time_since_last = (uk_time.replace(tzinfo=None) - last_time.replace(tzinfo=None)).total_seconds()
+        minutes_since_last = time_since_last / 60
+        
+        print(f"📊 Last sample started: {last_time.strftime('%H:%M')}")
+        print(f"⏱️  Time since last sample: {minutes_since_last:.1f} minutes")
+        
+        # Random interval between 17-19 minutes
+        # Use a consistent random interval per sample (stored in state)
+        current_interval = state.get('current_interval')
+        if current_interval is None:
+            current_interval = random.randint(17, 19)  # 17, 18, or 19 minutes
+        
+        print(f"🎯 Target interval: {current_interval} minutes")
+        
+        # Check if enough time has passed (allow ±1 minute flexibility)
+        if minutes_since_last >= (current_interval - 1):
+            print(f"✅ {minutes_since_last:.1f} minutes ≥ {current_interval-1} minutes - Time for next sample!")
+            
+            # Set new random interval for next time
+            next_interval = random.randint(17, 19)
+            
+            updated_state = state.copy()
+            updated_state['last_sample_time'] = uk_time.isoformat()
+            updated_state['current_interval'] = next_interval
+            updated_state['last_timing_check'] = uk_time.isoformat()
+            
+            print(f"🔄 Next interval will be: {next_interval} minutes")
+            return True, updated_state
         else:
-            next_target = min(next_targets)
-            next_target_str = f"{current_hour:02d}:{next_target:02d}"
-        print(f"⏰ Next sample opportunity: {next_target_str}")
-    
-    return should_process, updated_state
-    
+            # Not time yet
+            minutes_remaining = current_interval - minutes_since_last
+            next_time = uk_time + timedelta(minutes=minutes_remaining)
+            
+            print(f"⏰ Not time yet - need {minutes_remaining:.1f} more minutes")
+            print(f"⏰ Next sample at approximately: {next_time.strftime('%H:%M')}")
+            
+            updated_state = state.copy()
+            updated_state['current_interval'] = current_interval
+            updated_state['last_timing_check'] = uk_time.isoformat()
+            return False, updated_state
+            
+    except Exception as e:
+        print(f"⚠️  Error parsing last sample time: {e}")
+        # If we can't parse, start a new sample
+        updated_state = state.copy()
+        updated_state['last_sample_time'] = uk_time.isoformat()
+        updated_state['current_interval'] = random.randint(17, 19)
+        updated_state['last_timing_check'] = uk_time.isoformat()
+        return True, updated_state
+
+
 # ============================================================================
 # MODIFIED MAIN FUNCTION WITH VARIABLE TIMING
 # ============================================================================
