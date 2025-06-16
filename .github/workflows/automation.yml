@@ -1,9 +1,9 @@
-name: Colab Automation Every 15 Minutes
+name: Colab Automation Every 17 Minutes
 
 on:
   schedule:
-    # Runs every 15 minutes during work hours (8 AM - 6 PM UTC)
-    - cron: '*/15 8-18 * * 1-5'  # Mon-Fri, every 15 min, 8-6 PM
+    # Runs every 17 minutes during work hours (8 AM - 6 PM UTC)
+    - cron: '0,17,34,51 8-18 * * 1-5'  # Mon-Fri, every 17 min, 8-6 PM
   workflow_dispatch:  # Allows manual triggering
 
 jobs:
@@ -34,14 +34,24 @@ jobs:
         name: automation-state
         path: .
       continue-on-error: true
+      
+    - name: Check if state file was downloaded
+      run: |
+        if [ -f automation_state.json ]; then
+          echo "✅ Previous state file found and downloaded"
+          cat automation_state.json
+        else
+          echo "📝 No previous state file found - this is normal for first run"
+        fi
     
     - name: Create default state if none exists
       run: |
         if [ ! -f automation_state.json ]; then
           echo '{"current_project": null, "current_sample_index": 0, "processed_samples": [], "failed_samples": [], "completed_projects": [], "last_run_time": null, "total_samples_processed": 0}' > automation_state.json
+          echo "🆕 Created default state file"
         fi
         
-    - name: Run automation script
+    - name: Run automation script with real UK timing
       run: python automation_script.py
       
     - name: Upload updated state file
