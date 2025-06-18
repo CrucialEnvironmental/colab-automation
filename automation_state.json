@@ -50,11 +50,12 @@
     30830,
     30830,
     30830,
+    30830,
     30830
   ],
   "last_run_time": "2025-06-16T17:54:05.068602+01:00",
   "total_samples_processed": 3,
-  "last_sample_time": "2025-06-18T17:53:58.691807+01:00",
-  "last_timing_check": "2025-06-18T17:53:58.691807+01:00",
-  "current_interval": 17
+  "last_sample_time": "2025-06-18T18:40:45.223238+01:00",
+  "last_timing_check": "2025-06-18T18:40:45.223238+01:00",
+  "current_interval": 19
 }
