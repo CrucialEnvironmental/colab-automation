@@ -1256,7 +1256,7 @@ def main():
                 return
         
         # Navigate to sample
-        clicked, _ = click_sample_row_with_next_button(driver, sample_no, 1)
+        clicked = click_sample_row_with_next_button(driver, sample_no)
         if not clicked:
             print(f"❌ Failed to click on Sample {sample_no}")
             save_state(updated_state)
