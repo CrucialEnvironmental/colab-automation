@@ -378,47 +378,56 @@ def handle_popup(func):
             return False
     return wrapper
 
-def click_sample_row_with_next_button(driver, sample_no, last_sample_no=1):
-    """Clicks the row corresponding to the given Sample No."""
+def click_sample_row_with_next_button(driver, sample_no):
+    """
+    Clicks the row corresponding to the given Sample No.
+    Always assumes starting from the beginning (sample 1 on page 1).
+    """
     try:
-        clicks_required = (sample_no - 1) // 10 - (last_sample_no - 1) // 10
-        print(f"Navigating to Sample No. {sample_no}. Requires {clicks_required} 'Next' clicks.")
+        # Calculate which page the sample is on (10 samples per page)
+        # Page 1: Samples 1-10, Page 2: Samples 11-20, etc.
+        target_page = ((sample_no - 1) // 10) + 1
+        clicks_required = target_page - 1  # Pages beyond page 1 require next clicks
+        
+        print(f"Navigating to Sample No. {sample_no}")
+        print(f"  Target page: {target_page}")
+        print(f"  Next clicks required: {clicks_required}")
 
-        if clicks_required < 0:
-            raise ValueError("Invalid sample navigation: sample_no must be greater than or equal to last_sample_no.")
-
-        for _ in range(clicks_required):
-            print("Clicking 'Next' button...")
+        # Navigate to the correct page
+        for click_num in range(clicks_required):
+            print(f"  Clicking 'Next' button ({click_num + 1}/{clicks_required})...")
             next_button = WebDriverWait(driver, 10).until(
                 EC.element_to_be_clickable((By.ID, "TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.V.R1.FOOTER_CONTROLS.Next.ICON"))
             )
             next_button.click()
-            print("Clicked 'Next' button successfully.")
+            print(f"  Clicked 'Next' button successfully.")
             time.sleep(2)
 
-        row_index_on_page = (sample_no - 1) % 10 + 1
+        # Calculate which row on the current page (1-10)
+        row_index_on_page = ((sample_no - 1) % 10) + 1
         sample_css_selector = f"#TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA\\.TD\\.R{row_index_on_page}\\.SAMPLE_ID"
-        print(f"Attempting to click Sample No. {sample_no} at row index {row_index_on_page}")
+        
+        print(f"  Clicking Sample No. {sample_no} at row {row_index_on_page} on page {target_page}")
 
         sample_element = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, sample_css_selector))
         )
         sample_element.click()
-        print(f"Clicked on Sample No. {sample_no} successfully.")
+        print(f"✅ Successfully clicked on Sample No. {sample_no}")
 
         screenshot_filename = f"sample_{sample_no}_clicked.png"
         capture_screenshot(driver, screenshot_filename)
 
-        return True, sample_no
+        return True
 
     except TimeoutException:
-        print(f"Error: Sample row for Sample No. {sample_no} not found.")
+        print(f"❌ Error: Sample row for Sample No. {sample_no} not found.")
         capture_screenshot(driver, f"error_sample_{sample_no}.png")
     except Exception as e:
-        print(f"Failed to click Sample No. {sample_no}: {e}")
+        print(f"❌ Failed to click Sample No. {sample_no}: {e}")
         capture_screenshot(driver, f"error_sample_{sample_no}.png")
 
-    return False, last_sample_no
+    return False
 
 # ============================================================================
 # MODIFIED TIMING FUNCTIONS - USING REAL UK TIME
