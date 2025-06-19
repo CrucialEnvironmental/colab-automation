@@ -399,54 +399,161 @@ def handle_popup(func):
 
 def click_sample_row_with_next_button(driver, sample_no):
     """
-    Clicks the row corresponding to the given Sample No.
-    Always assumes starting from the beginning (sample 1 on page 1).
+    Navigates to the correct sample using the Next button.
+    When the page loads, Sample 1 is automatically selected.
+    Each click of Next moves to the next sample (not the next page).
     """
     try:
-        # Calculate which page the sample is on (10 samples per page)
-        # Page 1: Samples 1-10, Page 2: Samples 11-20, etc.
-        target_page = ((sample_no - 1) // 10) + 1
-        clicks_required = target_page - 1  # Pages beyond page 1 require next clicks
+        # Calculate how many Next clicks we need
+        # Sample 1: 0 clicks (already selected)
+        # Sample 2: 1 click
+        # Sample 3: 2 clicks, etc.
+        clicks_required = sample_no - 1
         
-        print(f"Navigating to Sample No. {sample_no}")
-        print(f"  Target page: {target_page}")
-        print(f"  Next clicks required: {clicks_required}")
+        print(f"📍 Navigating to Sample No. {sample_no}")
+        print(f"   Next clicks required: {clicks_required}")
 
-        # Navigate to the correct page
+        # If sample 1, it's already selected - no clicks needed
+        if clicks_required == 0:
+            print(f"✅ Sample 1 is already selected by default")
+            capture_screenshot(driver, f"sample_{sample_no}_selected.png")
+            
+            # Wait a moment and verify
+            time.sleep(2)
+            return verify_correct_sample_loaded(driver, sample_no)
+
+        # For samples 2+, click Next the required number of times
         for click_num in range(clicks_required):
             print(f"  Clicking 'Next' button ({click_num + 1}/{clicks_required})...")
-            next_button = WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((By.ID, "TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.V.R1.FOOTER_CONTROLS.Next.ICON"))
-            )
-            next_button.click()
-            print(f"  Clicked 'Next' button successfully.")
-            time.sleep(2)
+            try:
+                next_button = WebDriverWait(driver, 10).until(
+                    EC.element_to_be_clickable((By.ID, "TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.V.R1.FOOTER_CONTROLS.Next.ICON"))
+                )
+                
+                # Scroll into view if needed
+                driver.execute_script("arguments[0].scrollIntoView(true);", next_button)
+                time.sleep(0.5)
+                
+                next_button.click()
+                print(f"  ✓ Clicked 'Next' button successfully.")
+                
+                # Wait for the form to update
+                time.sleep(1.5)
+                
+            except TimeoutException:
+                print(f"❌ Error: Next button not found or not clickable")
+                capture_screenshot(driver, f"next_button_error_sample_{sample_no}.png")
+                return False
+            except Exception as e:
+                print(f"❌ Error clicking Next button: {e}")
+                capture_screenshot(driver, f"next_button_exception_sample_{sample_no}.png")
+                return False
 
-        # Calculate which row on the current page (1-10)
-        row_index_on_page = ((sample_no - 1) % 10) + 1
-        sample_css_selector = f"#TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA\\.TD\\.R{row_index_on_page}\\.SAMPLE_ID"
+        print(f"✅ Successfully navigated to Sample {sample_no}")
+        capture_screenshot(driver, f"sample_{sample_no}_selected.png")
         
-        print(f"  Clicking Sample No. {sample_no} at row {row_index_on_page} on page {target_page}")
+        # Verify the correct sample is loaded
+        time.sleep(2)
+        return verify_correct_sample_loaded(driver, sample_no)
 
-        sample_element = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, sample_css_selector))
-        )
-        sample_element.click()
-        print(f"✅ Successfully clicked on Sample No. {sample_no}")
-
-        screenshot_filename = f"sample_{sample_no}_clicked.png"
-        capture_screenshot(driver, screenshot_filename)
-
-        return True
-
-    except TimeoutException:
-        print(f"❌ Error: Sample row for Sample No. {sample_no} not found.")
-        capture_screenshot(driver, f"error_sample_{sample_no}.png")
     except Exception as e:
-        print(f"❌ Failed to click Sample No. {sample_no}: {e}")
+        print(f"❌ Failed to navigate to Sample No. {sample_no}: {e}")
         capture_screenshot(driver, f"error_sample_{sample_no}.png")
+        return False
 
-    return False
+
+def verify_correct_sample_loaded(driver, expected_sample_no):
+    """
+    Verify that the correct sample is loaded in the form.
+    Returns True if verified, False otherwise.
+    """
+    try:
+        print(f"🔍 Verifying Sample {expected_sample_no} is loaded...")
+        
+        # Look for fields that might contain the sample number
+        # These are common patterns in the existing IDs
+        possible_selectors = [
+            # Direct sample ID/number fields
+            "TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.V.R1.SAMPLE_ID",
+            "TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.V.R1.SAMPLE_NO",
+            "TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.V.R1.SAMPLE_NUMBER",
+            # Try looking in the form title or header
+            "TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA.TITLE",
+            # Look for any element containing SAMPLE
+            "[id*='SAMPLE'][id*='ID']",
+            "[id*='SAMPLE'][id*='NO']",
+            "[id*='SAMPLE'][id*='NUMBER']"
+        ]
+        
+        sample_found = False
+        found_value = None
+        
+        for selector in possible_selectors:
+            try:
+                if selector.startswith('['):
+                    # CSS selector
+                    elements = driver.find_elements(By.CSS_SELECTOR, selector)
+                else:
+                    # ID selector
+                    elements = driver.find_elements(By.ID, selector)
+                
+                for element in elements:
+                    if element.is_displayed():
+                        value = element.text or element.get_attribute('value') or ''
+                        if value.strip():
+                            # Check if the expected sample number is in the value
+                            if str(expected_sample_no) in str(value):
+                                print(f"   ✓ Found sample {expected_sample_no} in: {value}")
+                                sample_found = True
+                                found_value = value
+                                break
+                            else:
+                                # Log what we found for debugging
+                                print(f"   - Found value '{value}' but doesn't match expected {expected_sample_no}")
+                                
+            except Exception as e:
+                continue
+            
+            if sample_found:
+                break
+        
+        if sample_found:
+            print(f"✅ Verified: Sample {expected_sample_no} is loaded correctly")
+            return True
+        else:
+            print(f"❌ Could not verify Sample {expected_sample_no} is loaded")
+            print(f"   Expected: Sample {expected_sample_no}")
+            if found_value:
+                print(f"   Found: {found_value}")
+            
+            # Take a screenshot for debugging
+            capture_screenshot(driver, f"sample_verification_failed_{expected_sample_no}.png")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Error during sample verification: {e}")
+        return False
+
+
+def wait_for_form_update(driver, timeout=5):
+    """
+    Wait for the form to finish updating after navigation.
+    """
+    try:
+        # Wait for any loading indicators to disappear
+        WebDriverWait(driver, timeout).until_not(
+            EC.presence_of_element_located((By.CLASS_NAME, "loading"))
+        )
+        
+        # Also check for the overlay
+        WebDriverWait(driver, timeout).until_not(
+            EC.presence_of_element_located((By.ID, "AUILockUIPage"))
+        )
+        
+        return True
+    except:
+        # If no loading indicators found, that's fine
+        return True
 
 # ============================================================================
 # MODIFIED TIMING FUNCTIONS - USING REAL UK TIME
@@ -1275,33 +1382,26 @@ def main():
                 save_state(updated_state)
                 return
         
-        # Navigate to sample
+        # Navigate to sample using the corrected navigation logic
         clicked = click_sample_row_with_next_button(driver, sample_no)
         if not clicked:
-            print(f"❌ Failed to click on Sample {sample_no}")
+            print(f"❌ Failed to navigate to Sample {sample_no}")
+            
+            # Log this as a failed sample
+            updated_state['failed_samples'].append({
+                'project': project_number,
+                'sample': sample_no,
+                'reason': 'Failed to navigate to sample',
+                'timestamp': get_uk_time().isoformat()
+            })
+            updated_state['current_sample_index'] += 1
             save_state(updated_state)
             return
         
-        print(f"✅ Successfully navigated to Sample {sample_no}")
+        print(f"✅ Successfully navigated to and verified Sample {sample_no}")
         
-        # ADD DEBUGGING TO VERIFY SELECTED SAMPLE
-        try:
-            # Check which sample is currently selected by reading the sample ID field
-            selected_sample_elements = driver.find_elements(By.CSS_SELECTOR, "[id*='SAMPLE_ID']")
-            for element in selected_sample_elements:
-                selected_sample_text = element.text or element.get_attribute('value')
-                if selected_sample_text and selected_sample_text.strip():
-                    print(f"🔍 DEBUG: Website shows selected sample: '{selected_sample_text}'")
-                    break
-            
-            print(f"🔍 DEBUG: Expected sample number: {sample_no}")
-            
-            if str(sample_no) not in str(selected_sample_text):
-                print(f"⚠️ WARNING: Mismatch between expected ({sample_no}) and selected ({selected_sample_text}) sample!")
-                capture_screenshot(driver, f"sample_mismatch_{sample_no}.png")
-            
-        except Exception as e:
-            print(f"🔍 DEBUG: Could not verify selected sample: {e}")
+        # Wait for form to be ready
+        wait_for_form_update(driver)
         
         # Process sample with real timing
         project_df = df[df["Project Number"] == project_number].reset_index(drop=True)
@@ -1311,6 +1411,13 @@ def main():
         # Step 1: Set sample size
         if not set_sample_size_value(driver):
             print(f"❌ Failed to set sample size")
+            updated_state['failed_samples'].append({
+                'project': project_number,
+                'sample': sample_no,
+                'reason': 'Failed to set sample size',
+                'timestamp': get_uk_time().isoformat()
+            })
+            updated_state['current_sample_index'] += 1
             save_state(updated_state)
             return
         
@@ -1318,30 +1425,65 @@ def main():
         success, start_time_str = input_realistic_stereo_binocular_start_time(driver)
         if not success:
             print(f"❌ Failed to input start time")
+            updated_state['failed_samples'].append({
+                'project': project_number,
+                'sample': sample_no,
+                'reason': 'Failed to input start time',
+                'timestamp': get_uk_time().isoformat()
+            })
+            updated_state['current_sample_index'] += 1
             save_state(updated_state)
             return
         
         # Step 3: Set realistic end time (current UK time)
         if not set_realistic_plm_end_time(driver):
             print(f"❌ Failed to set PLM end time")
+            updated_state['failed_samples'].append({
+                'project': project_number,
+                'sample': sample_no,
+                'reason': 'Failed to set PLM end time',
+                'timestamp': get_uk_time().isoformat()
+            })
+            updated_state['current_sample_index'] += 1
             save_state(updated_state)
             return
         
         # Step 4: Copy value to dropdown
         if not copy_value_to_dropdown(driver):
             print(f"❌ Failed to copy value to dropdown")
+            updated_state['failed_samples'].append({
+                'project': project_number,
+                'sample': sample_no,
+                'reason': 'Failed to copy value to dropdown',
+                'timestamp': get_uk_time().isoformat()
+            })
+            updated_state['current_sample_index'] += 1
             save_state(updated_state)
             return
         
         # Step 5: Click analysis tab
         if not click_analysis_tab(driver):
             print(f"❌ Failed to click analysis tab")
+            updated_state['failed_samples'].append({
+                'project': project_number,
+                'sample': sample_no,
+                'reason': 'Failed to click analysis tab',
+                'timestamp': get_uk_time().isoformat()
+            })
+            updated_state['current_sample_index'] += 1
             save_state(updated_state)
             return
         
         # Step 6: Handle analysis result
         if not handle_analysis_1_result(driver=driver, df=project_df, row_index=sample_index):
             print(f"❌ Failed to handle analysis result")
+            updated_state['failed_samples'].append({
+                'project': project_number,
+                'sample': sample_no,
+                'reason': 'Failed to handle analysis result',
+                'timestamp': get_uk_time().isoformat()
+            })
+            updated_state['current_sample_index'] += 1
             save_state(updated_state)
             return
         
@@ -1379,6 +1521,9 @@ def main():
         
     except Exception as e:
         print(f"❌ Unexpected error: {e}")
+        import traceback
+        traceback.print_exc()
+        
         updated_state['failed_samples'].append({
             'project': project_number,
             'sample': sample_no,
@@ -1390,8 +1535,11 @@ def main():
     finally:
         # Save state and cleanup
         save_state(updated_state)
-        if driver:
-            driver.quit()
+        if 'driver' in locals() and driver:
+            try:
+                driver.quit()
+            except:
+                pass
 
 if __name__ == "__main__":
     main()
