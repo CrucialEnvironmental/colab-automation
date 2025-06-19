@@ -2,7 +2,6 @@ name: Realistic Variable Timing Automation
 
 on:
   schedule:
-    # Check every 5 minutes during work hours - script decides when to actually process
     - cron: '*/5 8-18 * * 1-5'  # Every 5 min, Mon-Fri, 8 AM - 6 PM UTC
   workflow_dispatch:  # Allows manual triggering
 
@@ -51,6 +50,16 @@ jobs:
         python automation_script.py
       env:
         LOGIN_PASSWORD: ${{ secrets.LOGIN_PASSWORD }}
+        
+    # NEW: Upload screenshots as artifacts
+    - name: Upload screenshots
+      if: always()  # Upload even if the automation failed
+      uses: actions/upload-artifact@v4
+      with:
+        name: automation-screenshots-${{ github.run_number }}
+        path: "*.png"
+        retention-days: 7  # Keep for 7 days
+        if-no-files-found: ignore  # Don't fail if no screenshots exist
         
     - name: Commit updated state file
       run: |
