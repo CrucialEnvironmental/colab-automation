@@ -84,10 +84,29 @@ def setup_chrome_for_github():
     return driver
 
 def capture_screenshot(driver, filename):
-    """Captures a screenshot (simplified for GitHub Actions)"""
+    """Captures a screenshot with sanitized filename for GitHub Actions"""
     try:
-        driver.save_screenshot(filename)
-        print(f"Screenshot saved: {filename}")
+        # Sanitize filename by removing/replacing invalid characters
+        invalid_chars = '<>:"|?*\r\n\\/'
+        sanitized_filename = filename
+        
+        for char in invalid_chars:
+            sanitized_filename = sanitized_filename.replace(char, '_')
+        
+        # Remove multiple underscores and clean up
+        while '__' in sanitized_filename:
+            sanitized_filename = sanitized_filename.replace('__', '_')
+        
+        # Ensure it ends with .png
+        if not sanitized_filename.endswith('.png'):
+            sanitized_filename += '.png'
+        
+        # Limit filename length to avoid issues
+        if len(sanitized_filename) > 100:
+            sanitized_filename = sanitized_filename[:96] + '.png'
+        
+        driver.save_screenshot(sanitized_filename)
+        print(f"Screenshot saved: {sanitized_filename}")
     except Exception as e:
         print(f"Could not save screenshot: {e}")
 
