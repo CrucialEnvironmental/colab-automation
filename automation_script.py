@@ -591,12 +591,13 @@ def handle_analysis_1_result(driver, df, row_index):
     """Handles the analysis result for a specific sample in the 'Analysis' tab."""
     try:
         analysis_1_result = df.loc[row_index, 'Analysis 1']
+        sample_no = df.loc[row_index, 'Sample No.']
 
         if pd.isna(analysis_1_result):
-            print(f"Analysis result is empty or NaN for Sample No. {row_index}. Skipping.")
+            print(f"Analysis result is empty or NaN for Sample No. {sample_no}. Skipping.")
             return False
 
-        print(f"Processing Analysis 1 result for Sample No. {row_index}: {analysis_1_result}")
+        print(f"Processing Analysis 1 result for Sample No. {sample_no} (DataFrame row {row_index}): {analysis_1_result}")
 
         if "NAD" in analysis_1_result:
             print("Handling NAD result...")
@@ -619,11 +620,11 @@ def handle_analysis_1_result(driver, df, row_index):
             capture_screenshot(driver, "Crocidolite_result.png")
 
         else:
-            print(f"Unknown analysis result for Sample No. {row_index}: {analysis_1_result}")
+            print(f"Unknown analysis result for Sample No. {sample_no}: {analysis_1_result}")
             capture_screenshot(driver, "unknown_analysis_result.png")
             return False
 
-        print(f"Analysis result handled successfully for Sample No. {row_index}")
+        print(f"Analysis result handled successfully for Sample No. {sample_no}")
         capture_screenshot(driver, "analysis_result_handling_success.png")
         return True
 
@@ -1263,6 +1264,25 @@ def main():
             return
         
         print(f"✅ Successfully navigated to Sample {sample_no}")
+        
+        # ADD DEBUGGING TO VERIFY SELECTED SAMPLE
+        try:
+            # Check which sample is currently selected by reading the sample ID field
+            selected_sample_elements = driver.find_elements(By.CSS_SELECTOR, "[id*='SAMPLE_ID']")
+            for element in selected_sample_elements:
+                selected_sample_text = element.text or element.get_attribute('value')
+                if selected_sample_text and selected_sample_text.strip():
+                    print(f"🔍 DEBUG: Website shows selected sample: '{selected_sample_text}'")
+                    break
+            
+            print(f"🔍 DEBUG: Expected sample number: {sample_no}")
+            
+            if str(sample_no) not in str(selected_sample_text):
+                print(f"⚠️ WARNING: Mismatch between expected ({sample_no}) and selected ({selected_sample_text}) sample!")
+                capture_screenshot(driver, f"sample_mismatch_{sample_no}.png")
+            
+        except Exception as e:
+            print(f"🔍 DEBUG: Could not verify selected sample: {e}")
         
         # Process sample with real timing
         project_df = df[df["Project Number"] == project_number].reset_index(drop=True)
