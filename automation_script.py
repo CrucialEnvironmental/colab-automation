@@ -388,8 +388,8 @@ def handle_popup(func):
             
             if handle_popup_ok_button(driver):
                 print(f"Popup handled after executing {func.__name__}.")
-                click_save_button(driver)
-                return False
+                # Don't call save button here - just return the original result
+                return result
             
             return result
         except Exception as e:
@@ -397,13 +397,33 @@ def handle_popup(func):
             return False
     return wrapper
 
-def click_sample_row_with_next_button(driver, sample_no):
+def normalize_sample_number(sample_no):
+    """Convert sample number to integer, handling various input types."""
+    try:
+        # Handle string, float, or int input
+        return int(float(str(sample_no).strip()))
+    except (ValueError, TypeError):
+        print(f"Warning: Could not convert sample number '{sample_no}' to integer")
+        return None
+
+def click_sample_row_with_next_button(driver, sample_no, is_new_project=False):
     """
     Navigates to the correct sample using the Next button.
     When the page loads, Sample 1 is automatically selected.
     Each click of Next moves to the next sample (not the next page).
+    
+    Args:
+        driver: Selenium webdriver
+        sample_no: Sample number to navigate to (integer)
+        is_new_project: If True, first navigate back to sample 1
     """
     try:
+        # If this is a new project, first go back to sample 1
+        if is_new_project and sample_no != 1:
+            if not navigate_to_first_sample(driver):
+                print("❌ Failed to navigate to first sample for new project")
+                return False
+        
         # Calculate how many Next clicks we need
         # Sample 1: 0 clicks (already selected)
         # Sample 2: 1 click
@@ -460,7 +480,6 @@ def click_sample_row_with_next_button(driver, sample_no):
         print(f"❌ Failed to navigate to Sample No. {sample_no}: {e}")
         capture_screenshot(driver, f"error_sample_{sample_no}.png")
         return False
-
 
 def verify_correct_sample_loaded(driver, expected_sample_no):
     """
@@ -1283,6 +1302,31 @@ def should_process_sample_now(state):
         updated_state['last_timing_check'] = uk_time.isoformat()
         return True, updated_state
 
+def navigate_to_first_sample(driver):
+    """
+    Navigate back to the first sample when starting a new project.
+    The 'First' button takes you back to sample 1.
+    """
+    try:
+        print("📍 Navigating back to Sample 1 for new project...")
+        
+        first_button = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.ID, "TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.V.R1.FOOTER_CONTROLS.First.ICON"))
+        )
+        
+        driver.execute_script("arguments[0].scrollIntoView(true);", first_button)
+        time.sleep(0.5)
+        
+        first_button.click()
+        print("✅ Clicked 'First' button - back at Sample 1")
+        
+        time.sleep(2)
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error navigating to first sample: {e}")
+        capture_screenshot(driver, "first_button_error.png")
+        return False
 
 # ============================================================================
 # MODIFIED MAIN FUNCTION WITH VARIABLE TIMING
@@ -1329,7 +1373,13 @@ def main():
         save_state(updated_state)
         return
     
-    sample_no = sample_data["Sample No."]
+        # In main(), after getting sample_data:
+    sample_no = normalize_sample_number(sample_data["Sample No."])
+    if sample_no is None:
+        print(f"❌ Invalid sample number in spreadsheet")
+        updated_state['current_sample_index'] += 1
+        save_state(updated_state)
+        return
     
     print(f"📋 Processing Project {project_number}, Sample {sample_no}")
     print(f"🕐 Using real UK time with variable timing pattern")
@@ -1382,8 +1432,11 @@ def main():
                 save_state(updated_state)
                 return
         
+        # Track if this is the first sample of a new project
+        is_new_project = (updated_state['current_sample_index'] == 0)
+        
         # Navigate to sample using the corrected navigation logic
-        clicked = click_sample_row_with_next_button(driver, sample_no)
+        clicked = click_sample_row_with_next_button(driver, sample_no, is_new_project)
         if not clicked:
             print(f"❌ Failed to navigate to Sample {sample_no}")
             
