@@ -5,15 +5,15 @@
     {
       "project": 24288,
       "sample": 1,
-      "timestamp": "2025-06-20T07:45:12.435048+01:00",
-      "save_time": "20/06/2025 07:45:12",
+      "timestamp": "2025-06-20T07:25:12.435048+01:00",
+      "save_time": "20/06/2025 07:25:12",
       "pattern_used": "unknown"
     }
   ],
   "failed_samples": [],
   "completed_projects": [],
-  "last_run_time": "2025-06-20T07:45:12.435140+01:00",
+  "last_run_time": "2025-06-20T07:25:12.435140+01:00",
   "total_samples_processed": 1,
-  "last_sample_time": "2025-06-20T07:43:31.613701+01:00",
-  "last_timing_check": "2025-06-20T07:43:31.613701+01:00"
+  "last_sample_time": "2025-06-20T07:23:31.613701+01:00",
+  "last_timing_check": "2025-06-20T07:23:31.613701+01:00"
 }
