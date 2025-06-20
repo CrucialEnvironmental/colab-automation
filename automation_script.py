@@ -71,15 +71,29 @@ def setup_chrome_for_github():
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--disable-gpu")
+    
+    # INCREASED WINDOW SIZE
     chrome_options.add_argument("--window-size=1920,1080")
+    chrome_options.add_argument("--start-maximized")
+    
     chrome_options.add_argument("--disable-web-security")
     chrome_options.add_argument("--disable-extensions")
     chrome_options.add_argument("--disable-default-apps")
     chrome_options.add_argument("--force-device-scale-factor=1")
     chrome_options.add_argument("--high-dpi-support=1")
     
+    # Additional options to help with rendering
+    chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+    chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+    
     driver = webdriver.Chrome(options=chrome_options)
-    driver.maximize_window()
+    
+    # Set window size again after creation
+    driver.set_window_size(1920, 1080)
+    
+    # Execute JavaScript to ensure viewport is correct
+    driver.execute_script("window.moveTo(0, 0);")
+    driver.execute_script("window.resizeTo(1920, 1080);")
     
     return driver
 
@@ -406,6 +420,29 @@ def normalize_sample_number(sample_no):
         print(f"Warning: Could not convert sample number '{sample_no}' to integer")
         return None
 
+def click_element_safely(driver, element, element_name="element"):
+    """
+    Tries to click an element safely, using JavaScript if regular click fails.
+    """
+    try:
+        # First try regular click
+        element.click()
+        return True
+    except ElementClickInterceptedException:
+        print(f"Regular click intercepted for {element_name}, trying JavaScript click...")
+        try:
+            # If regular click fails, use JavaScript
+            driver.execute_script("arguments[0].click();", element)
+            print(f"JavaScript click successful for {element_name}")
+            return True
+        except Exception as e:
+            print(f"JavaScript click also failed for {element_name}: {e}")
+            return False
+    except Exception as e:
+        print(f"Click failed for {element_name}: {e}")
+        return False
+
+
 def click_sample_row_with_next_button(driver, sample_no, is_new_project=False):
     """
     Navigates to the correct sample using the Next button.
@@ -446,19 +483,29 @@ def click_sample_row_with_next_button(driver, sample_no, is_new_project=False):
         for click_num in range(clicks_required):
             print(f"  Clicking 'Next' button ({click_num + 1}/{clicks_required})...")
             try:
+                # Wait for any overlays to disappear first
+                wait_for_no_overlay(driver)
+                
                 next_button = WebDriverWait(driver, 10).until(
                     EC.element_to_be_clickable((By.ID, "TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.V.R1.FOOTER_CONTROLS.Next.ICON"))
                 )
                 
                 # Scroll into view if needed
-                driver.execute_script("arguments[0].scrollIntoView(true);", next_button)
-                time.sleep(0.5)
+                driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", next_button)
+                time.sleep(1)
                 
-                next_button.click()
-                print(f"  ✓ Clicked 'Next' button successfully.")
+                # Try to click using our safe click method
+                if click_element_safely(driver, next_button, "Next button"):
+                    print(f"  ✓ Clicked 'Next' button successfully.")
+                else:
+                    # If both click methods fail, try one more approach
+                    print("  Trying alternative click method...")
+                    actions = ActionChains(driver)
+                    actions.move_to_element(next_button).click().perform()
+                    print(f"  ✓ Clicked 'Next' button using ActionChains.")
                 
                 # Wait for the form to update
-                time.sleep(1.5)
+                time.sleep(2)
                 
             except TimeoutException:
                 print(f"❌ Error: Next button not found or not clickable")
@@ -1310,15 +1357,23 @@ def navigate_to_first_sample(driver):
     try:
         print("📍 Navigating back to Sample 1 for new project...")
         
+        # Wait for any overlays to disappear
+        wait_for_no_overlay(driver)
+        
         first_button = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.ID, "TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.V.R1.FOOTER_CONTROLS.First.ICON"))
         )
         
-        driver.execute_script("arguments[0].scrollIntoView(true);", first_button)
-        time.sleep(0.5)
+        driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", first_button)
+        time.sleep(1)
         
-        first_button.click()
-        print("✅ Clicked 'First' button - back at Sample 1")
+        if click_element_safely(driver, first_button, "First button"):
+            print("✅ Clicked 'First' button - back at Sample 1")
+        else:
+            # Try ActionChains as fallback
+            actions = ActionChains(driver)
+            actions.move_to_element(first_button).click().perform()
+            print("✅ Clicked 'First' button using ActionChains - back at Sample 1")
         
         time.sleep(2)
         return True
