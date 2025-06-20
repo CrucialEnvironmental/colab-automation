@@ -25,10 +25,12 @@
     }
   ],
   "failed_samples": [],
-  "completed_projects": [],
+  "completed_projects": [
+    24288
+  ],
   "last_run_time": "2025-06-20T08:27:39.442135+01:00",
   "total_samples_processed": 3,
-  "last_sample_time": "2025-06-20T08:25:44.012474+01:00",
-  "last_timing_check": "2025-06-20T08:25:44.012474+01:00",
+  "last_sample_time": "2025-06-20T09:50:54.915257+01:00",
+  "last_timing_check": "2025-06-20T09:50:54.915257+01:00",
   "current_interval": 19
 }
