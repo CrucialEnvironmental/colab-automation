@@ -50,11 +50,12 @@
     30931,
     30931,
     30931,
+    30931,
     30931
   ],
   "last_run_time": "2025-06-20T14:28:12.267715+01:00",
   "total_samples_processed": 5,
-  "last_sample_time": "2025-06-20T16:38:38.499468+01:00",
-  "last_timing_check": "2025-06-20T16:50:00.694724+01:00",
-  "current_interval": 18
+  "last_sample_time": "2025-06-20T16:56:29.114314+01:00",
+  "last_timing_check": "2025-06-20T16:56:29.114314+01:00",
+  "current_interval": 19
 }
