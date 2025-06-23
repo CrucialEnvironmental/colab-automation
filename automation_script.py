@@ -1279,7 +1279,7 @@ import pytz
 
 def should_process_sample_now(state):
     """
-    Rolling timing: Run 17-19 minutes after the last sample was started.
+    Rolling timing: Run 17-19 minutes after the last sample was SUCCESSFULLY processed.
     This creates a natural rolling schedule that shifts throughout the day.
     """
     uk_time = get_uk_time()
@@ -1291,8 +1291,8 @@ def should_process_sample_now(state):
     # If no previous sample, start immediately
     if not last_sample_time:
         print(f"🚀 No previous sample found - starting first sample!")
+        # Don't update last_sample_time here - only after successful processing
         updated_state = state.copy()
-        updated_state['last_sample_time'] = uk_time.isoformat()
         updated_state['last_timing_check'] = uk_time.isoformat()
         return True, updated_state
     
@@ -1302,8 +1302,8 @@ def should_process_sample_now(state):
         time_since_last = (uk_time.replace(tzinfo=None) - last_time.replace(tzinfo=None)).total_seconds()
         minutes_since_last = time_since_last / 60
         
-        print(f"📊 Last sample started: {last_time.strftime('%H:%M')}")
-        print(f"⏱️  Time since last sample: {minutes_since_last:.1f} minutes")
+        print(f"📊 Last successful sample: {last_time.strftime('%H:%M')}")
+        print(f"⏱️  Time since last successful sample: {minutes_since_last:.1f} minutes")
         
         # Random interval between 17-19 minutes
         # Use a consistent random interval per sample (stored in state)
@@ -1321,7 +1321,7 @@ def should_process_sample_now(state):
             next_interval = random.randint(17, 19)
             
             updated_state = state.copy()
-            updated_state['last_sample_time'] = uk_time.isoformat()
+            # Don't update last_sample_time here - only after successful processing
             updated_state['current_interval'] = next_interval
             updated_state['last_timing_check'] = uk_time.isoformat()
             
@@ -1344,7 +1344,7 @@ def should_process_sample_now(state):
         print(f"⚠️  Error parsing last sample time: {e}")
         # If we can't parse, start a new sample
         updated_state = state.copy()
-        updated_state['last_sample_time'] = uk_time.isoformat()
+        # Don't update last_sample_time here - only after successful processing
         updated_state['current_interval'] = random.randint(17, 19)
         updated_state['last_timing_check'] = uk_time.isoformat()
         return True, updated_state
@@ -1406,6 +1406,7 @@ def main():
         return
     
     print(f"🎯 Time to process a sample! Starting automation...")
+    print(f"⚠️  Note: If processing fails, the system can retry immediately since timing is only updated after successful saves.")
     
     # Load data
     spreadsheet_url = "https://docs.google.com/spreadsheets/d/1cK7Agui9UMlPr2p1K2jI3jtZxyJuYtm7jP5hi9g4i4Q/export?format=csv&gid=433984109"
@@ -1443,9 +1444,10 @@ def main():
     driver = setup_chrome_for_github()
     
     try:
-        # Login and navigate
+    # Login and navigate
         if not login(driver, "ryan", os.environ.get('LOGIN_PASSWORD', '')):
             print("❌ Login failed")
+            print("🔄 Timing not updated - can retry immediately")
             save_state(updated_state)
             return
         
@@ -1607,18 +1609,21 @@ def main():
             })
         else:
             print(f"✅ Successfully completed and saved Sample {sample_no}")
+            success_time = get_uk_time()
+            
+            # Update last_sample_time ONLY after successful save
+            updated_state['last_sample_time'] = success_time.isoformat()
+            
             updated_state['processed_samples'].append({
                 'project': project_number,
                 'sample': sample_no,
-                'timestamp': get_uk_time().isoformat(),
-                'save_time': get_uk_time().strftime('%d/%m/%Y %H:%M:%S'),
+                'timestamp': success_time.isoformat(),
+                'save_time': success_time.strftime('%d/%m/%Y %H:%M:%S'),
                 'pattern_used': updated_state.get('current_pattern', 'unknown')
             })
             updated_state['total_samples_processed'] += 1
-        
-        # Update state
-        updated_state['current_sample_index'] += 1
-        updated_state['last_run_time'] = get_uk_time().isoformat()
+            
+            print(f"🕐 Next sample can be processed after: {(success_time + timedelta(minutes=updated_state.get('current_interval', 18))).strftime('%H:%M')}")
         
         print(f"📊 Progress Update:")
         print(f"   ✅ Samples Processed: {updated_state['total_samples_processed']}")
@@ -1626,6 +1631,15 @@ def main():
         print(f"   🏷️  Current Project: {updated_state['current_project']}")
         print(f"   📍 Next Sample Index: {updated_state['current_sample_index']}")
         print(f"   🎯 Current Pattern: {updated_state.get('current_pattern', 'unknown')}")
+        
+        # Show timing status
+        if 'last_sample_time' in updated_state:
+            last_time = datetime.fromisoformat(updated_state['last_sample_time'].replace('Z', '+00:00'))
+            next_possible = last_time + timedelta(minutes=updated_state.get('current_interval', 18))
+            print(f"   🕐 Last successful sample: {last_time.strftime('%H:%M')}")
+            print(f"   ⏰ Next sample possible at: {next_possible.strftime('%H:%M')}")
+        else:
+            print(f"   🕐 No timing restriction - can process immediately")
         
     except Exception as e:
         print(f"❌ Unexpected error: {e}")
@@ -1639,6 +1653,7 @@ def main():
             'timestamp': get_uk_time().isoformat()
         })
         updated_state['current_sample_index'] += 1
+        print("🔄 Timing not updated due to error - can retry immediately")
         
     finally:
         # Save state and cleanup
