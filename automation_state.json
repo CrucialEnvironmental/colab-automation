@@ -126,11 +126,12 @@
     30935,
     30935,
     30935,
+    30935,
     30935
   ],
   "last_run_time": "2025-06-23T15:50:41.488465+01:00",
   "total_samples_processed": 15,
   "last_sample_time": "2025-06-24T10:43:18.858375+01:00",
-  "last_timing_check": "2025-06-24T18:40:26.243014+01:00",
-  "current_interval": 19
+  "last_timing_check": "2025-06-24T18:52:13.977280+01:00",
+  "current_interval": 17
 }
