@@ -47,7 +47,7 @@ jobs:
     - name: Run Shane's automation
       env:
         USERNAME: ${{ secrets.SHANE_USERNAME }}
-        PASSWORD: ${{ secrets.SHANE_PASSWORD }}
+        PASSWORD: ${{ secrets.LOGIN_PASSWORD_SHANE }}
         USER_TYPE: shane
         FORCE_RUN: ${{ github.event.inputs.force_run }}
       run: |
