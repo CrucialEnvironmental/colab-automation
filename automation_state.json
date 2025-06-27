@@ -1,6 +1,6 @@
 {
-  "current_project": 31054,
-  "current_sample_index": 3,
+  "current_project": 31060,
+  "current_sample_index": 1,
   "processed_samples": [
     {
       "project": 30947,
@@ -294,6 +294,12 @@
       "sample": 3,
       "reason": "Processing error: capture_screenshot() missing 1 required positional argument: 'username'",
       "timestamp": "2025-06-27T09:14:52.774462+01:00"
+    },
+    {
+      "project": 31060,
+      "sample": 1,
+      "reason": "Processing error: capture_screenshot() missing 1 required positional argument: 'username'",
+      "timestamp": "2025-06-27T09:22:59.322418+01:00"
     }
   ],
   "completed_projects": [
@@ -351,11 +357,12 @@
     31056,
     31019,
     31113,
-    31055
+    31055,
+    31054
   ],
   "last_run_time": "2025-06-23T15:50:41.488465+01:00",
   "total_samples_processed": 39,
   "last_sample_time": "2025-06-27T08:41:05.049668+01:00",
-  "last_timing_check": "2025-06-27T09:14:28.059912+01:00",
-  "current_interval": 19
+  "last_timing_check": "2025-06-27T09:22:26.084599+01:00",
+  "current_interval": 17
 }
