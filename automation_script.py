@@ -244,15 +244,15 @@ def input_project_number(driver, project_number, username):
         project_number = str(int(float(project_number)))
         project_number_field.send_keys(project_number)
         print(f"Project number {project_number} input successful!")
-         capture_screenshot(driver, "project_number_input.png", username)
+        capture_screenshot(driver, "project_number_input.png", username)
         return True
     except TimeoutException:
         print("Error: Could not find the project number input field.")
-         capture_screenshot(driver, "project_number_input_error.png", username)
+        capture_screenshot(driver, "project_number_input_error.png", username)
         return False
     except Exception as e:
         print(f"An error occurred while inputting project number: {str(e)}")
-         capture_screenshot(driver, "project_number_input_error.png", username)
+        capture_screenshot(driver, "project_number_input_error.png", username)
         return False
 
 def press_enter_or_search_on_project_number(driver, project_number):
