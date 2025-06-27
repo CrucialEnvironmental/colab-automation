@@ -47,7 +47,7 @@ jobs:
     - name: Run Ryan's automation
       env:
         USERNAME: ${{ secrets.RYAN_USERNAME }}
-        PASSWORD: ${{ secrets.RYAN_PASSWORD }}
+        PASSWORD: ${{ secrets.LOGIN_PASSWORD }}
         FORCE_RUN: ${{ github.event.inputs.force_run }}
       run: |
         echo "🕐 Checking if it's time to process a sample for Ryan..."
