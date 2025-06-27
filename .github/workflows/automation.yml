@@ -88,12 +88,14 @@ jobs:
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         
-        # Pull latest changes to avoid conflicts
+        # Stash any unstaged changes and pull latest
+        git stash || echo "Nothing to stash"
         git pull origin main --rebase || echo "Pull failed, continuing..."
+        git stash pop || echo "Nothing to pop"
         
         # Add and commit state file if it exists
-        if [ -f "ryan_automation_state.json" ]; then
-          git add ryan_automation_state.json
+        if [ -f "automation_state.json" ]; then
+          git add automation_state.json
           git commit -m "Update Ryan's automation state - $(date -u '+%Y-%m-%d %H:%M:%S UTC') - Next interval: ${INTERVAL}min" || echo "No changes to commit"
           
           # Push with retry logic
