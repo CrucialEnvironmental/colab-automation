@@ -52,7 +52,7 @@ jobs:
         FORCE_RUN: ${{ github.event.inputs.force_run }}
       run: |
         echo "🕐 Checking if it's time to process a sample for Shane..."
-        python automation_script.py
+        python automation_script.py shane
 
     - name: Get automation result
       id: automation_result
