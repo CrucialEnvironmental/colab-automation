@@ -201,12 +201,12 @@ def login(driver, username, password, user_for_screenshot):
 
         WebDriverWait(driver, 10).until(EC.url_contains("TabbedUI_MainMenu"))
         print(f"Login successful for user '{username}'!")
-         f"screenshot_after_login_{username}.png", user_for_screenshot)
+        capture_screenshot(driver, f"screenshot_after_login_{username}.png", username)
         return True
 
     except Exception as e:
         print(f"Error occurred during login for user '{username}': {e}")
-         f"login_error_{username}.png", user_for_screenshot)
+        capture_screenshot(driver, f"login_error_{username}.png", username)
         return False
 
 def click_lab_button(driver):
@@ -483,7 +483,7 @@ def click_sample_row_with_next_button(driver, sample_no, is_new_project=False, u
     try:
         # If this is a new project, first go back to sample 1
         if is_new_project and sample_no != 1:
-            if not navigate_to_first_sample(driver):
+            if not navigate_to_first_sample(driver, username):
                 print("❌ Failed to navigate to first sample for new project")
                 return False
         
@@ -535,7 +535,7 @@ def click_sample_row_with_next_button(driver, sample_no, is_new_project=False, u
                 
             except TimeoutException:
                 print(f"❌ Error: Next button not found or not clickable")
-                 f"next_button_error_sample_{sample_no}.png")
+                capture_screenshot(driver, f"sample_{sample_no}_selected.png", username)
                 return False
             except Exception as e:
                 print(f"❌ Error clicking Next button: {e}")
@@ -1374,7 +1374,7 @@ def should_process_sample_now(state, username):
         updated_state['last_timing_check'] = uk_time.isoformat()
         return True, updated_state
         
-def navigate_to_first_sample(driver, usernmame):
+def navigate_to_first_sample(driver, username):
     """
     Navigate back to the first sample when starting a new project.
     The 'First' button takes you back to sample 1.
@@ -1563,7 +1563,7 @@ def main():
         print(f"📝 Starting sample processing with realistic timing...")
         
         # Step 1: Set sample size
-        if not set_sample_size_value(driver):
+        if not set_sample_size_value(driver, username):
             print(f"❌ Failed to set sample size")
             updated_state['failed_samples'].append({
                 'project': project_number,
@@ -1590,7 +1590,7 @@ def main():
             return
         
         # Step 3: Set realistic end time (current UK time)
-        if not set_realistic_plm_end_time(driver):
+        if not set_realistic_plm_end_time(driver, username):
             print(f"❌ Failed to set PLM end time")
             updated_state['failed_samples'].append({
                 'project': project_number,
@@ -1629,7 +1629,7 @@ def main():
             return
         
         # Step 6: Handle analysis result
-        if not handle_analysis_1_result(driver=driver, df=project_df, row_index=sample_index):
+        if not handle_analysis_1_result(driver=driver, df=project_df, row_index=sample_index, username=username):
             print(f"❌ Failed to handle analysis result")
             updated_state['failed_samples'].append({
                 'project': project_number,
@@ -1643,7 +1643,7 @@ def main():
         
         # Step 7: Save immediately (end time will match save time)
         print(f"💾 Saving Sample {sample_no} at current UK time...")
-        if not click_save_button(driver):
+        if not click_save_button(driver, username):
             print(f"❌ Failed to save Sample {sample_no}")
             updated_state['failed_samples'].append({
                 'project': project_number,
