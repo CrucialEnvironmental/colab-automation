@@ -1,12 +1,19 @@
 {
-  "current_project": null,
-  "current_sample_index": 0,
+  "current_project": 31054,
+  "current_sample_index": 1,
   "processed_samples": [],
-  "failed_samples": [],
+  "failed_samples": [
+    {
+      "project": 31054,
+      "sample": 1,
+      "reason": "Failed to handle analysis result",
+      "timestamp": "2025-06-27T10:24:40.619535+01:00"
+    }
+  ],
   "completed_projects": [],
   "last_run_time": null,
   "total_samples_processed": 0,
   "last_sample_time": null,
-  "last_timing_check": null,
+  "last_timing_check": "2025-06-27T10:23:15.707824+01:00",
   "current_interval": null
 }
