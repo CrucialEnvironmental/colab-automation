@@ -819,22 +819,22 @@ def handle_analysis_1_result(driver, df, row_index, username):
 
         if "NAD" in analysis_1_result:
             print("Handling NAD result...")
-            click_NAD_result_elements(driver, NAD_result_elements)
+            click_NAD_result_elements(driver, NAD_result_elements, username)
             capture_screenshot(driver, "NAD_result.png", username)
 
         elif "Chrysotile" in analysis_1_result:
             print("Handling Chrysotile result...")
-            click_Chrysotile_result_elements(driver, Chrysotile_result_elements)
+            click_Chrysotile_result_elements(driver, Chrysotile_result_elements, username)
             capture_screenshot(driver, "Chrysotile_result.png", username)
 
         elif "Amosite" in analysis_1_result:
             print("Handling Amosite result...")
-            click_amosite_result_elements(driver, amosite_result_elements)
+            click_amosite_result_elements(driver, amosite_result_elements, username)
             capture_screenshot(driver, "Amosite_result.png", username)
 
         elif "Crocidolite" in analysis_1_result:
             print("Handling Crocidolite result...")
-            click_crocidolite_result_elements(driver, crocidolite_result_elements)
+            click_crocidolite_result_elements(driver, crocidolite_result_elements, username)
             capture_screenshot(driver, "Crocidolite_result.png", username)
 
         else:
