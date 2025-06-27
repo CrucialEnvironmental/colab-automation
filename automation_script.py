@@ -499,7 +499,7 @@ def click_sample_row_with_next_button(driver, sample_no, is_new_project=False, u
         # If sample 1, it's already selected - no clicks needed
         if clicks_required == 0:
             print(f"✅ Sample 1 is already selected by default")
-             capture_screenshot(driver, f"sample_{sample_no}_selected.png", username)
+            capture_screenshot(driver, f"sample_{sample_no}_selected.png", username)
             
             # Wait a moment and verify
             time.sleep(2)
