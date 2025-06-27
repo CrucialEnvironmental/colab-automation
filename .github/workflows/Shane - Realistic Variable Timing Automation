@@ -1,0 +1,96 @@
+name: Shane - Realistic Variable Timing Automation
+
+on:
+  schedule:
+    - cron: '*/5 8-18 * * 1-5'  # Every 5 min, Mon-Fri, 8 AM - 6 PM UTC
+  workflow_dispatch:  # Allows manual triggering
+
+permissions:
+  contents: write  # Explicitly grant write permissions
+
+jobs:
+  run-shane-automation:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4  # Updated to v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        
+    - name: Install Chrome
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y google-chrome-stable
+        
+    - name: Install Python dependencies
+      run: |
+        pip install -r requirements.txt
+        
+    - name: Check existing state file
+      run: |
+        if [ -f automation_state_shane.json ]; then
+          echo "✅ Previous state file found for Shane"
+          echo "Current state:"
+          cat automation_state_shane.json | jq '.' || cat automation_state_shane.json
+        else
+          echo "📝 No previous state file found for Shane - creating default"
+          echo '{"current_project": null, "current_sample_index": 0, "processed_samples": [], "failed_samples": [], "completed_projects": [], "last_run_time": null, "total_samples_processed": 0}' > automation_state_shane.json
+        fi
+        
+    - name: Run Shane's automation script with variable timing
+      run: |
+        echo "🕐 Checking if it's time to process a sample for Shane..."
+        python automation_script.py shane
+      env:
+        LOGIN_PASSWORD_SHANE: ${{ secrets.LOGIN_PASSWORD_SHANE }}
+        
+    - name: Upload Shane's screenshots
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: shane-automation-screenshots-${{ github.run_number }}
+        path: "shane_*.png"
+        retention-days: 7
+        if-no-files-found: ignore
+        
+    - name: Commit Shane's updated state file
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add automation_state_shane.json
+        
+        if git diff --staged --quiet; then
+          echo "No changes to commit for Shane"
+        else
+          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          INTERVAL_INFO=""
+          if command -v jq &> /dev/null && [ -f automation_state_shane.json ]; then
+            CURRENT_INTERVAL=$(cat automation_state_shane.json | jq -r '.current_interval // "unknown"' 2>/dev/null || echo "unknown")
+            INTERVAL_INFO=" - Next interval: ${CURRENT_INTERVAL}min"
+          fi
+          
+          git commit -m "Update Shane's automation state - $TIMESTAMP$INTERVAL_INFO"
+          git push origin main
+          echo "✅ Shane's state file committed and pushed"
+        fi
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Notify on failure
+      if: failure()
+      run: |
+        echo "❌ Shane's automation failed at $(date)"
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add automation_state_shane.json || true
+        git commit -m "Update Shane's automation state - FAILED RUN $(date -u)" || true
+        git push origin main || true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
