@@ -1,1 +1,12 @@
-
+{
+  "current_project": null,
+  "current_sample_index": 0,
+  "processed_samples": [],
+  "failed_samples": [],
+  "completed_projects": [],
+  "last_run_time": null,
+  "total_samples_processed": 0,
+  "last_sample_time": null,
+  "last_timing_check": null,
+  "current_interval": null
+}
