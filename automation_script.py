@@ -1470,7 +1470,7 @@ def main():
     
     if project_number is None:
         print("🏁 All samples completed!")
-        save_state(updated_state)
+        save_state(updated_state, username)
         return
     
         # In main(), after getting sample_data:
@@ -1478,7 +1478,7 @@ def main():
     if sample_no is None:
         print(f"❌ Invalid sample number in spreadsheet")
         updated_state['current_sample_index'] += 1
-        save_state(updated_state)
+        save_state(updated_state, username)
         return
     
     print(f"📋 Processing Project {project_number}, Sample {sample_no}")
@@ -1492,33 +1492,33 @@ def main():
         if not login(driver, username, password, username):
             print("❌ Login failed")
             print("🔄 Timing not updated - can retry immediately")
-            save_state(updated_state)
+            save_state(updated_state, username)
             return
         
         if not click_lab_button(driver) or not click_lab_project_list_button(driver):
             print("❌ Navigation failed")
-            save_state(updated_state)
+            save_state(updated_state, username)
             return
         
         # Load project
         wait_for_no_overlay(driver)
         clear_search_criteria(driver)
         
-        if not input_project_number(driver, project_number):
+        if not input_project_number(driver, project_number, username):
             print("❌ Failed to input project")
-            save_state(updated_state)
+            save_state(updated_state, username)
             return
         
         if not press_enter_or_search_on_project_number(driver, project_number):
             print("❌ Failed to search project")
-            save_state(updated_state)
+            save_state(updated_state, username)
             return
         
-        verify_project_numbers(driver)
+        verify_project_numbers(driver, username)
         
-        if not click_view_fibre_analysis_button(driver):
+        if not click_view_fibre_analysis_button(driver, username):
             print("❌ Failed to open analysis")
-            save_state(updated_state)
+            save_state(updated_state, username)
             return
         
         # Verify sample counts (first time only)
@@ -1530,7 +1530,7 @@ def main():
                 print(f"❌ Sample count mismatch: {verification['reason']}")
                 updated_state['completed_projects'].append(project_number)
                 updated_state['current_sample_index'] = 0
-                save_state(updated_state)
+                save_state(updated_state, username)
                 return
         
         # Track if this is the first sample of a new project
@@ -1549,7 +1549,7 @@ def main():
                 'timestamp': get_uk_time().isoformat()
             })
             updated_state['current_sample_index'] += 1
-            save_state(updated_state)
+            save_state(updated_state, username)
             return
         
         print(f"✅ Successfully navigated to and verified Sample {sample_no}")
@@ -1572,7 +1572,7 @@ def main():
                 'timestamp': get_uk_time().isoformat()
             })
             updated_state['current_sample_index'] += 1
-            save_state(updated_state)
+            save_state(updated_state, username)
             return
         
         # Step 2: Input realistic start time (calculated from current UK time)
@@ -1586,7 +1586,7 @@ def main():
                 'timestamp': get_uk_time().isoformat()
             })
             updated_state['current_sample_index'] += 1
-            save_state(updated_state)
+            save_state(updated_state, username)
             return
         
         # Step 3: Set realistic end time (current UK time)
@@ -1599,7 +1599,7 @@ def main():
                 'timestamp': get_uk_time().isoformat()
             })
             updated_state['current_sample_index'] += 1
-            save_state(updated_state)
+            save_state(updated_state, username)
             return
         
         # Step 4: Copy value to dropdown
@@ -1612,7 +1612,7 @@ def main():
                 'timestamp': get_uk_time().isoformat()
             })
             updated_state['current_sample_index'] += 1
-            save_state(updated_state)
+            save_state(updated_state, username)
             return
         
         # Step 5: Click analysis tab
@@ -1625,7 +1625,7 @@ def main():
                 'timestamp': get_uk_time().isoformat()
             })
             updated_state['current_sample_index'] += 1
-            save_state(updated_state)
+            save_state(updated_state, username)
             return
         
         # Step 6: Handle analysis result
@@ -1638,7 +1638,7 @@ def main():
                 'timestamp': get_uk_time().isoformat()
             })
             updated_state['current_sample_index'] += 1
-            save_state(updated_state)
+            save_state(updated_state, username)
             return
         
         # Step 7: Save immediately (end time will match save time)
@@ -1704,7 +1704,7 @@ def main():
         print(f"✅ Automation completed for {username}")
     finally:
         # Save state and cleanup
-        save_state(updated_state)
+        save_state(updated_state, username)
         if 'driver' in locals() and driver:
             try:
                 driver.quit()
