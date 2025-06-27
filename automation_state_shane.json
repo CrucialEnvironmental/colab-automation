@@ -1,1 +1,10 @@
-{"current_project": null, "current_sample_index": 0, "processed_samples": [], "failed_samples": [], "completed_projects": [], "last_run_time": null, "total_samples_processed": 0}
+{
+  "current_project": null,
+  "current_sample_index": 0,
+  "processed_samples": [],
+  "failed_samples": [],
+  "completed_projects": [],
+  "last_run_time": null,
+  "total_samples_processed": 0,
+  "last_timing_check": "2025-06-27T10:53:02.475171+01:00"
+}
