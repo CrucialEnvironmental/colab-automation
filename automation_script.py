@@ -1,4 +1,3 @@
-# Complete Automation Script with Real UK Timing System
 import pandas as pd
 import requests
 from io import StringIO
@@ -21,6 +20,30 @@ import os
 import sys
 from functools import wraps
 import pytz
+
+# ============================================================================
+# USER CONFIGURATION
+# ============================================================================
+
+# Configuration for different users
+USER_CONFIG = {
+    'ryan': {
+        'spreadsheet_url': 'https://docs.google.com/spreadsheets/d/1cK7Agui9UMlPr2p1K2jI3jtZxyJuYtm7jP5hi9g4i4Q/export?format=csv&gid=433984109',
+        'password_env_var': 'LOGIN_PASSWORD',
+        'state_file': 'automation_state.json'
+    },
+    'shane': {
+        'spreadsheet_url': 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRcM36obQqTTQwEQNSeFhUA--gMjrH4OIcdWmVvwNzjR6tzIflFq5aORdIqi9Aa0x2ntrW8787C13-J/pub?output=csv',  # Shane will need his own spreadsheet
+        'password_env_var': 'LOGIN_PASSWORD_SHANE',
+        'state_file': 'automation_state_shane.json'
+    }
+}
+
+def get_user_config(username):
+    """Get configuration for specified user."""
+    if username not in USER_CONFIG:
+        raise ValueError(f"Unknown user: {username}. Available users: {list(USER_CONFIG.keys())}")
+    return USER_CONFIG[username]
 
 # ============================================================================
 # REAL-TIME UK TIMING FUNCTIONS
@@ -97,12 +120,15 @@ def setup_chrome_for_github():
     
     return driver
 
-def capture_screenshot(driver, filename):
-    """Captures a screenshot with sanitized filename for GitHub Actions"""
+def capture_screenshot(driver, filename, username):
+    """Captures a screenshot with user-specific naming"""
     try:
+        # Add username prefix to filename
+        user_filename = f"{username}_{filename}"
+        
         # Sanitize filename by removing/replacing invalid characters
         invalid_chars = '<>:"|?*\r\n\\/'
-        sanitized_filename = filename
+        sanitized_filename = user_filename
         
         for char in invalid_chars:
             sanitized_filename = sanitized_filename.replace(char, '_')
@@ -125,7 +151,7 @@ def capture_screenshot(driver, filename):
         print(f"Could not save screenshot: {e}")
 
 # ============================================================================
-# YOUR ORIGINAL FUNCTIONS FROM COLAB BLOCKS
+# YOUR ORIGINAL FUNCTIONS FROM COLAB BLOCKS (Updated for multi-user)
 # ============================================================================
 
 def load_data_from_google_sheets(url, columns, row_index=0):
@@ -152,7 +178,7 @@ def load_data_from_google_sheets(url, columns, row_index=0):
         print(f"An error occurred while extracting data: {e}")
         return None
 
-def login(driver, username, password):
+def login(driver, username, password, user_for_screenshot):
     """Perform the login process on the specified driver."""
     try:
         driver.get("https://crucial-enviro.alphatracker.online/")
@@ -175,12 +201,12 @@ def login(driver, username, password):
 
         WebDriverWait(driver, 10).until(EC.url_contains("TabbedUI_MainMenu"))
         print(f"Login successful for user '{username}'!")
-        capture_screenshot(driver, f"screenshot_after_login_{username}.png")
+        capture_screenshot(driver, f"screenshot_after_login_{username}.png", user_for_screenshot)
         return True
 
     except Exception as e:
         print(f"Error occurred during login for user '{username}': {e}")
-        capture_screenshot(driver, f"login_error_{username}.png")
+        capture_screenshot(driver, f"login_error_{username}.png", user_for_screenshot)
         return False
 
 def click_lab_button(driver):
@@ -1138,16 +1164,19 @@ def close_fiber_analysis(driver):
 # STATE MANAGEMENT FOR GITHUB ACTIONS
 # ============================================================================
 
-def load_state():
-    """Load automation state from file."""
+def load_state(username):
+    """Load automation state from user-specific file."""
+    config = get_user_config(username)
+    state_file = config['state_file']
+    
     try:
-        if os.path.exists('automation_state.json'):
-            with open('automation_state.json', 'r') as f:
+        if os.path.exists(state_file):
+            with open(state_file, 'r') as f:
                 state = json.load(f)
-            print(f"📂 State loaded: {state}")
+            print(f"📂 State loaded for {username}: {state}")
             return state
     except Exception as e:
-        print(f"⚠️ Could not load state: {e}")
+        print(f"⚠️ Could not load state for {username}: {e}")
     
     default_state = {
         'current_project': None,
@@ -1156,19 +1185,23 @@ def load_state():
         'failed_samples': [],
         'completed_projects': [],
         'last_run_time': None,
-        'total_samples_processed': 0
+        'total_samples_processed': 0,
+        'user': username
     }
-    print(f"🆕 Using default state")
+    print(f"🆕 Using default state for {username}")
     return default_state
 
-def save_state(state):
-    """Save automation state to file."""
+def save_state(state, username):
+    """Save automation state to user-specific file."""
+    config = get_user_config(username)
+    state_file = config['state_file']
+    
     try:
-        with open('automation_state.json', 'w') as f:
+        with open(state_file, 'w') as f:
             json.dump(state, f, indent=2, default=str)
-        print(f"💾 State saved: {state}")
+        print(f"💾 State saved for {username}: {state}")
     except Exception as e:
-        print(f"❌ Error saving state: {e}")
+        print(f"❌ Error saving state for {username}: {e}")
 
 def count_samples_on_website(driver):
     """Count samples on website using record count element."""
@@ -1277,21 +1310,19 @@ import pytz
 # REALISTIC TIMING PATTERNS
 # ============================================================================
 
-def should_process_sample_now(state):
+def should_process_sample_now(state, username):
     """
     Rolling timing: Run 17-19 minutes after the last sample was SUCCESSFULLY processed.
-    This creates a natural rolling schedule that shifts throughout the day.
     """
     uk_time = get_uk_time()
     
-    print(f"🕐 Current time: {uk_time.strftime('%H:%M')}")
+    print(f"🕐 Current time for {username}: {uk_time.strftime('%H:%M')}")
     
     last_sample_time = state.get('last_sample_time', None)
     
     # If no previous sample, start immediately
     if not last_sample_time:
-        print(f"🚀 No previous sample found - starting first sample!")
-        # Don't update last_sample_time here - only after successful processing
+        print(f"🚀 No previous sample found for {username} - starting first sample!")
         updated_state = state.copy()
         updated_state['last_timing_check'] = uk_time.isoformat()
         return True, updated_state
@@ -1302,37 +1333,33 @@ def should_process_sample_now(state):
         time_since_last = (uk_time.replace(tzinfo=None) - last_time.replace(tzinfo=None)).total_seconds()
         minutes_since_last = time_since_last / 60
         
-        print(f"📊 Last successful sample: {last_time.strftime('%H:%M')}")
+        print(f"📊 Last successful sample for {username}: {last_time.strftime('%H:%M')}")
         print(f"⏱️  Time since last successful sample: {minutes_since_last:.1f} minutes")
         
         # Random interval between 17-19 minutes
-        # Use a consistent random interval per sample (stored in state)
         current_interval = state.get('current_interval')
         if current_interval is None:
-            current_interval = random.randint(17, 19)  # 17, 18, or 19 minutes
+            current_interval = random.randint(17, 19)
         
-        print(f"🎯 Target interval: {current_interval} minutes")
+        print(f"🎯 Target interval for {username}: {current_interval} minutes")
         
-        # Check if enough time has passed (allow ±1 minute flexibility)
+        # Check if enough time has passed
         if minutes_since_last >= (current_interval - 1):
             print(f"✅ {minutes_since_last:.1f} minutes ≥ {current_interval-1} minutes - Time for next sample!")
             
-            # Set new random interval for next time
             next_interval = random.randint(17, 19)
             
             updated_state = state.copy()
-            # Don't update last_sample_time here - only after successful processing
             updated_state['current_interval'] = next_interval
             updated_state['last_timing_check'] = uk_time.isoformat()
             
-            print(f"🔄 Next interval will be: {next_interval} minutes")
+            print(f"🔄 Next interval for {username} will be: {next_interval} minutes")
             return True, updated_state
         else:
-            # Not time yet
             minutes_remaining = current_interval - minutes_since_last
             next_time = uk_time + timedelta(minutes=minutes_remaining)
             
-            print(f"⏰ Not time yet - need {minutes_remaining:.1f} more minutes")
+            print(f"⏰ Not time yet for {username} - need {minutes_remaining:.1f} more minutes")
             print(f"⏰ Next sample at approximately: {next_time.strftime('%H:%M')}")
             
             updated_state = state.copy()
@@ -1341,14 +1368,12 @@ def should_process_sample_now(state):
             return False, updated_state
             
     except Exception as e:
-        print(f"⚠️  Error parsing last sample time: {e}")
-        # If we can't parse, start a new sample
+        print(f"⚠️  Error parsing last sample time for {username}: {e}")
         updated_state = state.copy()
-        # Don't update last_sample_time here - only after successful processing
         updated_state['current_interval'] = random.randint(17, 19)
         updated_state['last_timing_check'] = uk_time.isoformat()
         return True, updated_state
-
+        
 def navigate_to_first_sample(driver):
     """
     Navigate back to the first sample when starting a new project.
@@ -1388,34 +1413,53 @@ def navigate_to_first_sample(driver):
 # ============================================================================
 
 def main():
-    """Main function with realistic variable timing."""
-    print(f"\n{'='*80}")
-    print(f"🚀 REALISTIC VARIABLE TIMING AUTOMATION - {get_uk_time().strftime('%Y-%m-%d %H:%M:%S %Z')}")
-    print(f"{'='*80}")
-    
-    # Load state
-    state = load_state()
-    
-    # Check if we should process a sample right now
-    should_process, updated_state = should_process_sample_now(state)
-    
-    if not should_process:
-        print(f"⏸️  Not time to process a sample yet. Exiting until next check.")
-        # Save the updated state (pattern info) even if we're not processing
-        save_state(updated_state)
+    """Main function with multi-user support."""
+    # Get username from command line argument
+    if len(sys.argv) < 2:
+        print("❌ Usage: python automation_script.py <username>")
+        print("Available users: ryan, shane")
         return
     
-    print(f"🎯 Time to process a sample! Starting automation...")
-    print(f"⚠️  Note: If processing fails, the system can retry immediately since timing is only updated after successful saves.")
+    username = sys.argv[1].lower()
     
-    # Load data
-    spreadsheet_url = "https://docs.google.com/spreadsheets/d/1cK7Agui9UMlPr2p1K2jI3jtZxyJuYtm7jP5hi9g4i4Q/export?format=csv&gid=433984109"
+    try:
+        config = get_user_config(username)
+    except ValueError as e:
+        print(f"❌ {e}")
+        return
+    
+    print(f"\n{'='*80}")
+    print(f"🚀 REALISTIC VARIABLE TIMING AUTOMATION - {username.upper()} - {get_uk_time().strftime('%Y-%m-%d %H:%M:%S %Z')}")
+    print(f"{'='*80}")
+    
+    # Load user-specific state
+    state = load_state(username)
+    
+    # Check if we should process a sample right now
+    should_process, updated_state = should_process_sample_now(state, username)
+    
+    if not should_process:
+        print(f"⏸️  Not time to process a sample for {username} yet. Exiting until next check.")
+        save_state(updated_state, username)
+        return
+    
+    print(f"🎯 Time to process a sample for {username}! Starting automation...")
+    
+    # Load data from user-specific spreadsheet
+    spreadsheet_url = config['spreadsheet_url']
     columns_to_extract = ["Project Number", "Sample No.", "Stereo Binocular Start Time", "Analysis 1"]
     
     df = load_data_from_google_sheets(spreadsheet_url, columns_to_extract)
     if df is None:
-        print("❌ Failed to load data")
-        save_state(updated_state)
+        print(f"❌ Failed to load data for {username}")
+        save_state(updated_state, username)
+        return
+    
+    # Get password from environment variable
+    password = os.environ.get(config['password_env_var'], '')
+    if not password:
+        print(f"❌ Password not found in environment variable {config['password_env_var']}")
+        save_state(updated_state, username)
         return
     
     # Note: We still need the spreadsheet for Analysis 1 column, but ignore the start time
@@ -1657,7 +1701,7 @@ def main():
         })
         updated_state['current_sample_index'] += 1
         print("🔄 Timing not updated due to error - can retry immediately")
-        
+        print(f"✅ Automation completed for {username}")
     finally:
         # Save state and cleanup
         save_state(updated_state)
