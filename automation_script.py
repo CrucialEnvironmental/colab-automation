@@ -244,15 +244,15 @@ def input_project_number(driver, project_number, username):
         project_number = str(int(float(project_number)))
         project_number_field.send_keys(project_number)
         print(f"Project number {project_number} input successful!")
-        capture_screenshot(driver, "project_number_input.png")
+        capture_screenshot(driver, "project_number_input.png", username)
         return True
     except TimeoutException:
         print("Error: Could not find the project number input field.")
-        capture_screenshot(driver, "project_number_input_error.png")
+        capture_screenshot(driver, "project_number_input_error.png", username)
         return False
     except Exception as e:
         print(f"An error occurred while inputting project number: {str(e)}")
-        capture_screenshot(driver, "project_number_input_error.png")
+        capture_screenshot(driver, "project_number_input_error.png", username)
         return False
 
 def press_enter_or_search_on_project_number(driver, project_number):
@@ -332,7 +332,7 @@ def verify_project_numbers(driver, username):
 
         print("Project numbers match. Continuing execution.")
         screenshot_filename = f"project_numbers_match_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.png"
-        capture_screenshot(driver, screenshot_filename)
+        capture_screenshot(driver, screenshot_filename, username)
 
     except TimeoutException:
         print("Error: Could not locate one or both project number elements.")
@@ -350,7 +350,7 @@ def click_view_fibre_analysis_button(driver, username):
         )
 
         driver.execute_script("arguments[0].scrollIntoView(true);", fibre_analysis_button)
-        capture_screenshot(driver, "before_click_view_fibre_analysis_button.png")
+        capture_screenshot(driver, "before_click_view_fibre_analysis_button.png", username)
         fibre_analysis_button.click()
         print("Clicked the 'View Fibre Analysis' button successfully!")
 
@@ -364,16 +364,16 @@ def click_view_fibre_analysis_button(driver, username):
         )
         print("Loading pop-up dismissed.")
 
-        capture_screenshot(driver, "after_loading_fibre_analysis.png")
+        capture_screenshot(driver, "after_loading_fibre_analysis.png", username)
         return True
 
     except TimeoutException:
         print("Timeout: Loading did not finish in the expected time.")
-        capture_screenshot(driver, "timeout_loading_fibre_analysis.png")
+        capture_screenshot(driver, "timeout_loading_fibre_analysis.png", username)
         return False
     except Exception as e:
         print(f"An error occurred while clicking 'View Fibre Analysis' button: {e}")
-        capture_screenshot(driver, "error_clicking_view_fibre_analysis_button.png")
+        capture_screenshot(driver, "error_clicking_view_fibre_analysis_button.png", username)
         return False
 
 def clear_search_criteria(driver):
