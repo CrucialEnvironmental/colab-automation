@@ -120,7 +120,7 @@ def setup_chrome_for_github():
     
     return driver
 
-def capture_screenshot(driver, filename, username):
+def  filename, username):
     """Captures a screenshot with user-specific naming"""
     try:
         # Add username prefix to filename
@@ -201,12 +201,12 @@ def login(driver, username, password, user_for_screenshot):
 
         WebDriverWait(driver, 10).until(EC.url_contains("TabbedUI_MainMenu"))
         print(f"Login successful for user '{username}'!")
-        capture_screenshot(driver, f"screenshot_after_login_{username}.png", user_for_screenshot)
+         f"screenshot_after_login_{username}.png", user_for_screenshot)
         return True
 
     except Exception as e:
         print(f"Error occurred during login for user '{username}': {e}")
-        capture_screenshot(driver, f"login_error_{username}.png", user_for_screenshot)
+         f"login_error_{username}.png", user_for_screenshot)
         return False
 
 def click_lab_button(driver):
@@ -244,15 +244,15 @@ def input_project_number(driver, project_number, username):
         project_number = str(int(float(project_number)))
         project_number_field.send_keys(project_number)
         print(f"Project number {project_number} input successful!")
-        capture_screenshot(driver, "project_number_input.png", username)
+         "project_number_input.png", username)
         return True
     except TimeoutException:
         print("Error: Could not find the project number input field.")
-        capture_screenshot(driver, "project_number_input_error.png", username)
+         "project_number_input_error.png", username)
         return False
     except Exception as e:
         print(f"An error occurred while inputting project number: {str(e)}")
-        capture_screenshot(driver, "project_number_input_error.png", username)
+         "project_number_input_error.png", username)
         return False
 
 def press_enter_or_search_on_project_number(driver, project_number):
@@ -332,7 +332,7 @@ def verify_project_numbers(driver, username):
 
         print("Project numbers match. Continuing execution.")
         screenshot_filename = f"project_numbers_match_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.png"
-        capture_screenshot(driver, screenshot_filename, username)
+         screenshot_filename, username)
 
     except TimeoutException:
         print("Error: Could not locate one or both project number elements.")
@@ -350,7 +350,7 @@ def click_view_fibre_analysis_button(driver, username):
         )
 
         driver.execute_script("arguments[0].scrollIntoView(true);", fibre_analysis_button)
-        capture_screenshot(driver, "before_click_view_fibre_analysis_button.png", username)
+         "before_click_view_fibre_analysis_button.png", username)
         fibre_analysis_button.click()
         print("Clicked the 'View Fibre Analysis' button successfully!")
 
@@ -364,16 +364,16 @@ def click_view_fibre_analysis_button(driver, username):
         )
         print("Loading pop-up dismissed.")
 
-        capture_screenshot(driver, "after_loading_fibre_analysis.png", username)
+         "after_loading_fibre_analysis.png", username)
         return True
 
     except TimeoutException:
         print("Timeout: Loading did not finish in the expected time.")
-        capture_screenshot(driver, "timeout_loading_fibre_analysis.png", username)
+         "timeout_loading_fibre_analysis.png", username)
         return False
     except Exception as e:
         print(f"An error occurred while clicking 'View Fibre Analysis' button: {e}")
-        capture_screenshot(driver, "error_clicking_view_fibre_analysis_button.png", username)
+         "error_clicking_view_fibre_analysis_button.png", username)
         return False
 
 def clear_search_criteria(driver):
@@ -469,7 +469,7 @@ def click_element_safely(driver, element, element_name="element"):
         return False
 
 
-def click_sample_row_with_next_button(driver, sample_no, is_new_project=False):
+def click_sample_row_with_next_button(driver, sample_no, is_new_project=False, username="unknown"):
     """
     Navigates to the correct sample using the Next button.
     When the page loads, Sample 1 is automatically selected.
@@ -499,7 +499,7 @@ def click_sample_row_with_next_button(driver, sample_no, is_new_project=False):
         # If sample 1, it's already selected - no clicks needed
         if clicks_required == 0:
             print(f"✅ Sample 1 is already selected by default")
-            capture_screenshot(driver, f"sample_{sample_no}_selected.png")
+             f"sample_{sample_no}_selected.png")
             
             # Wait a moment and verify
             time.sleep(2)
@@ -535,15 +535,15 @@ def click_sample_row_with_next_button(driver, sample_no, is_new_project=False):
                 
             except TimeoutException:
                 print(f"❌ Error: Next button not found or not clickable")
-                capture_screenshot(driver, f"next_button_error_sample_{sample_no}.png")
+                 f"next_button_error_sample_{sample_no}.png")
                 return False
             except Exception as e:
                 print(f"❌ Error clicking Next button: {e}")
-                capture_screenshot(driver, f"next_button_exception_sample_{sample_no}.png")
+                capture_screenshot(driver, f"next_button_exception_sample_{sample_no}.png", username)
                 return False
 
         print(f"✅ Successfully navigated to Sample {sample_no}")
-        capture_screenshot(driver, f"sample_{sample_no}_selected.png")
+        capture_screenshot(driver, f"sample_{sample_no}_selected.png", username)
         
         # Verify the correct sample is loaded
         time.sleep(2)
@@ -551,7 +551,7 @@ def click_sample_row_with_next_button(driver, sample_no, is_new_project=False):
 
     except Exception as e:
         print(f"❌ Failed to navigate to Sample No. {sample_no}: {e}")
-        capture_screenshot(driver, f"error_sample_{sample_no}.png")
+        capture_screenshot(driver, f"error_sample_{sample_no}.png", username)
         return False
 
 def verify_correct_sample_loaded(driver, expected_sample_no):
@@ -619,7 +619,7 @@ def verify_correct_sample_loaded(driver, expected_sample_no):
                 print(f"   Found: {found_value}")
             
             # Take a screenshot for debugging
-            capture_screenshot(driver, f"sample_verification_failed_{expected_sample_no}.png")
+            capture_screenshot(driver, f"sample_verification_failed_{expected_sample_no}.png", username)
             return False
             
     except Exception as e:
@@ -678,7 +678,7 @@ def input_realistic_stereo_binocular_start_time(driver):
         return False, None
 
 @handle_popup
-def set_realistic_plm_end_time(driver):
+def set_realistic_plm_end_time(driver, username):
     """
     Set PLM end time to current UK time (when we're about to save).
     This replaces the old function that calculated from start time.
@@ -694,7 +694,7 @@ def set_realistic_plm_end_time(driver):
         plm_end_time_field.send_keys(end_time_str)
 
         print(f"✅ PLM End Time set to current UK time: {end_time_str}")
-        capture_screenshot(driver, "realistic_plm_end_time_set.png")
+        capture_screenshot(driver, "realistic_plm_end_time_set.png", username)
 
         return True
 
@@ -740,7 +740,7 @@ def copy_value_to_dropdown(driver):
         return False
 
 @handle_popup
-def set_sample_size_value(driver):
+def set_sample_size_value(driver, username):
     try:
         sample_size_field = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.ID, "TBI_LAB_PROJEC_162148FIEL_FIBRE_ANAL_BLBA_FIBRE_ANALYSIS_UX.V.R1.SAMPLE_SIZE"))
@@ -762,7 +762,7 @@ def set_sample_size_value(driver):
             sample_size_field.send_keys(Keys.ENTER)
 
         print("✅ Sample size set to 'sufficient' successfully!")
-        capture_screenshot(driver, "sample_size_set.png")
+        capture_screenshot(driver, "sample_size_set.png", username)
 
         return True
 
@@ -774,7 +774,7 @@ def set_sample_size_value(driver):
         return False
 
 @handle_popup
-def click_analysis_tab(driver):
+def click_analysis_tab(driver, username):
     """Clicks on the 'Analysis' tab in the Fibre Analysis pop-up."""
     try:
         print("Attempting to locate 'Analysis' tab...")
@@ -797,15 +797,15 @@ def click_analysis_tab(driver):
 
     except TimeoutException:
         print("Timeout: 'Analysis' tab content not found or not clickable.")
-        capture_screenshot(driver, "analysis_tab_not_found.png")
+        capture_screenshot(driver, "analysis_tab_not_found.png", username)
         return False
     except Exception as e:
         print(f"An error occurred while clicking the 'Analysis' tab: {e}")
-        capture_screenshot(driver, "analysis_tab_error.png")
+        capture_screenshot(driver, "analysis_tab_error.png", username)
         return False
 
 @handle_popup
-def handle_analysis_1_result(driver, df, row_index):
+def handle_analysis_1_result(driver, df, row_index, username):
     """Handles the analysis result for a specific sample in the 'Analysis' tab."""
     try:
         analysis_1_result = df.loc[row_index, 'Analysis 1']
@@ -820,43 +820,43 @@ def handle_analysis_1_result(driver, df, row_index):
         if "NAD" in analysis_1_result:
             print("Handling NAD result...")
             click_NAD_result_elements(driver, NAD_result_elements)
-            capture_screenshot(driver, "NAD_result.png")
+            capture_screenshot(driver, "NAD_result.png", username)
 
         elif "Chrysotile" in analysis_1_result:
             print("Handling Chrysotile result...")
             click_Chrysotile_result_elements(driver, Chrysotile_result_elements)
-            capture_screenshot(driver, "Chrysotile_result.png")
+            capture_screenshot(driver, "Chrysotile_result.png", username)
 
         elif "Amosite" in analysis_1_result:
             print("Handling Amosite result...")
             click_amosite_result_elements(driver, amosite_result_elements)
-            capture_screenshot(driver, "Amosite_result.png")
+            capture_screenshot(driver, "Amosite_result.png", username)
 
         elif "Crocidolite" in analysis_1_result:
             print("Handling Crocidolite result...")
             click_crocidolite_result_elements(driver, crocidolite_result_elements)
-            capture_screenshot(driver, "Crocidolite_result.png")
+            capture_screenshot(driver, "Crocidolite_result.png", username)
 
         else:
             print(f"Unknown analysis result for Sample No. {sample_no}: {analysis_1_result}")
-            capture_screenshot(driver, "unknown_analysis_result.png")
+            capture_screenshot(driver, "unknown_analysis_result.png", username)
             return False
 
         print(f"Analysis result handled successfully for Sample No. {sample_no}")
-        capture_screenshot(driver, "analysis_result_handling_success.png")
+        capture_screenshot(driver, "analysis_result_handling_success.png", username)
         return True
 
     except KeyError as e:
         print(f"KeyError: Missing column in DataFrame - {e}")
-        capture_screenshot(driver, "analysis_result_keyerror.png")
+        capture_screenshot(driver, "analysis_result_keyerror.png", username)
         return False
     except TimeoutException:
         print("Error: Element not found within the specified time.")
-        capture_screenshot(driver, "analysis_result_timeout.png")
+        capture_screenshot(driver, "analysis_result_timeout.png", username)
         return False
     except Exception as e:
         print(f"An error occurred while handling analysis 1 result: {str(e)}")
-        capture_screenshot(driver, "analysis_result_error.png")
+        capture_screenshot(driver, "analysis_result_error.png", username)
         return False
 
 # Analysis element lists (your original data)
@@ -939,7 +939,7 @@ crocidolite_result_elements = [
 ]
 
 @handle_popup
-def click_NAD_result_elements(driver, NAD_result_elements):
+def click_NAD_result_elements(driver, NAD_result_elements, username):
     """Iterates over the list of NAD result elements and performs actions."""
     try:
         for action in NAD_result_elements:
@@ -962,7 +962,7 @@ def click_NAD_result_elements(driver, NAD_result_elements):
                         driver.execute_script("arguments[0].scrollIntoView(true);", element)
                         element.click()
                         print(f"Clicked on {element_selector} successfully!")
-                        capture_screenshot(driver, f"clicked_{element_selector.replace('#', '').replace('.', '')}.png")
+                        capture_screenshot(driver, f"clicked_{element_selector.replace('#', '').replace('.', '')}.png", username)
                         break
                     except StaleElementReferenceException:
                         print(f"Stale element reference encountered for {element_selector}. Retrying...")
@@ -979,10 +979,10 @@ def click_NAD_result_elements(driver, NAD_result_elements):
 
     except Exception as e:
         print(f"An error occurred while performing actions on NAD result elements: {str(e)}")
-        capture_screenshot(driver, "nad_result_error.png")
+        capture_screenshot(driver, "nad_result_error.png", username)
 
 @handle_popup
-def click_Chrysotile_result_elements(driver, Chrysotile_result_elements):
+def click_Chrysotile_result_elements(driver, Chrysotile_result_elements, username):
     """Iterates over the list of Chrysotile result elements and performs actions."""
     try:
         for action in Chrysotile_result_elements:
@@ -1005,7 +1005,7 @@ def click_Chrysotile_result_elements(driver, Chrysotile_result_elements):
                         driver.execute_script("arguments[0].scrollIntoView(true);", element)
                         element.click()
                         print(f"Clicked on {element_selector} successfully!")
-                        capture_screenshot(driver, f"clicked_{element_selector.replace('#', '').replace('.', '')}.png")
+                        capture_screenshot(driver, f"clicked_{element_selector.replace('#', '').replace('.', '')}.png", username)
                         break
                     except StaleElementReferenceException:
                         print(f"Stale element reference encountered for {element_selector}. Retrying...")
@@ -1022,10 +1022,10 @@ def click_Chrysotile_result_elements(driver, Chrysotile_result_elements):
 
     except Exception as e:
         print(f"An error occurred while performing actions on Chrysotile result elements: {str(e)}")
-        capture_screenshot(driver, "chrysotile_result_error.png")
+        capture_screenshot(driver, "chrysotile_result_error.png", username)
 
 @handle_popup
-def click_amosite_result_elements(driver, amosite_result_elements):
+def click_amosite_result_elements(driver, amosite_result_elements, username):
     """Iterates over the list of Amosite result elements and performs actions."""
     try:
         for action in amosite_result_elements:
@@ -1048,7 +1048,7 @@ def click_amosite_result_elements(driver, amosite_result_elements):
                         driver.execute_script("arguments[0].scrollIntoView(true);", element)
                         element.click()
                         print(f"Clicked on {element_selector} successfully!")
-                        capture_screenshot(driver, f"clicked_{element_selector.replace('#', '').replace('.', '')}.png")
+                        capture_screenshot(driver, f"clicked_{element_selector.replace('#', '').replace('.', '')}.png", username)
                         break
                     except StaleElementReferenceException:
                         print(f"Stale element reference encountered for {element_selector}. Retrying...")
@@ -1065,9 +1065,9 @@ def click_amosite_result_elements(driver, amosite_result_elements):
 
     except Exception as e:
         print(f"An error occurred while performing actions on Amosite result elements: {str(e)}")
-        capture_screenshot(driver, "amosite_result_error.png")
+        capture_screenshot(driver, "amosite_result_error.png", username)
 
-def click_crocidolite_result_elements(driver, crocidolite_result_elements):
+def click_crocidolite_result_elements(driver, crocidolite_result_elements, username):
     """Iterates over the list of Crocidolite result elements and performs actions."""
     try:
         for action in crocidolite_result_elements:
@@ -1090,7 +1090,7 @@ def click_crocidolite_result_elements(driver, crocidolite_result_elements):
                         driver.execute_script("arguments[0].scrollIntoView(true);", element)
                         element.click()
                         print(f"Clicked on {element_selector} successfully!")
-                        capture_screenshot(driver, f"clicked_{element_selector.replace('#', '').replace('.', '')}.png")
+                        capture_screenshot(driver, f"clicked_{element_selector.replace('#', '').replace('.', '')}.png", username)
                         break
                     except StaleElementReferenceException:
                         print(f"Stale element reference encountered for {element_selector}. Retrying...")
@@ -1107,10 +1107,10 @@ def click_crocidolite_result_elements(driver, crocidolite_result_elements):
 
     except Exception as e:
         print(f"An error occurred while performing actions on Crocidolite result elements: {str(e)}")
-        capture_screenshot(driver, "crocidolite_result_error.png")
+        capture_screenshot(driver, "crocidolite_result_error.png", username)
 
 @handle_popup
-def click_save_button(driver):
+def click_save_button(driver, username):
     """Clicks the save button on the Fibre Analysis page."""
     try:
         print("Attempting to click the save button...")
@@ -1127,17 +1127,17 @@ def click_save_button(driver):
             EC.presence_of_element_located((By.ID, "loading_indicator_id"))
         )
         print("Save action completed.")
-        capture_screenshot(driver, "Save_screenshot.png")
+        capture_screenshot(driver, "Save_screenshot.png", username)
 
         return True
 
     except TimeoutException:
         print("Error: Save button not clickable or not found.")
-        capture_screenshot(driver, "save_button_error.png")
+        capture_screenshot(driver, "save_button_error.png", username)
         return False
     except Exception as e:
         print(f"An error occurred while clicking the save button: {e}")
-        capture_screenshot(driver, "save_button_exception.png")
+        capture_screenshot(driver, "save_button_exception.png", username)
         return False
 
 @handle_popup
@@ -1374,7 +1374,7 @@ def should_process_sample_now(state, username):
         updated_state['last_timing_check'] = uk_time.isoformat()
         return True, updated_state
         
-def navigate_to_first_sample(driver):
+def navigate_to_first_sample(driver, usernmame):
     """
     Navigate back to the first sample when starting a new project.
     The 'First' button takes you back to sample 1.
@@ -1405,7 +1405,7 @@ def navigate_to_first_sample(driver):
         
     except Exception as e:
         print(f"❌ Error navigating to first sample: {e}")
-        capture_screenshot(driver, "first_button_error.png")
+        capture_screenshot(driver, "first_button_error.png", username)
         return False
 
 # ============================================================================
@@ -1537,7 +1537,7 @@ def main():
         is_new_project = (updated_state['current_sample_index'] == 0)
         
         # Navigate to sample using the corrected navigation logic
-        clicked = click_sample_row_with_next_button(driver, sample_no, is_new_project)
+        clicked = click_sample_row_with_next_button(driver, sample_no, is_new_project, username)
         if not clicked:
             print(f"❌ Failed to navigate to Sample {sample_no}")
             
