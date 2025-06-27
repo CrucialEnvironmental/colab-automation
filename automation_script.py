@@ -960,7 +960,6 @@ def click_NAD_result_elements(driver, NAD_result_elements, username):
                 else:
                     print(f"Unknown locator type '{element_type}'. Skipping this element.")
                     continue
-
                 print(f"Attempting to click element: {element_selector}")
                 for attempt in range(3):
                     try:
@@ -980,14 +979,16 @@ def click_NAD_result_elements(driver, NAD_result_elements, username):
                         continue
                 else:
                     print(f"Failed to click on {element_selector} after 3 retries.")
-
             except ValueError:
                 print(f"Malformed action: {action}. Expected format 'type=value'. Skipping.")
                 continue
-
+        
+        return True  
+        
     except Exception as e:
         print(f"An error occurred while performing actions on NAD result elements: {str(e)}")
         capture_screenshot(driver, "nad_result_error.png", username)
+        return False  
 
 @handle_popup
 def click_Chrysotile_result_elements(driver, Chrysotile_result_elements, username):
@@ -1027,10 +1028,13 @@ def click_Chrysotile_result_elements(driver, Chrysotile_result_elements, usernam
             except ValueError:
                 print(f"Malformed action: {action}. Expected format 'type=value'. Skipping.")
                 continue
-
+                
+        return True
+        
     except Exception as e:
         print(f"An error occurred while performing actions on Chrysotile result elements: {str(e)}")
         capture_screenshot(driver, "chrysotile_result_error.png", username)
+        return False
 
 @handle_popup
 def click_amosite_result_elements(driver, amosite_result_elements, username):
@@ -1070,11 +1074,14 @@ def click_amosite_result_elements(driver, amosite_result_elements, username):
             except ValueError:
                 print(f"Malformed action: {action}. Expected format 'type=value'. Skipping.")
                 continue
-
+                
+        return True
+        
     except Exception as e:
         print(f"An error occurred while performing actions on Amosite result elements: {str(e)}")
         capture_screenshot(driver, "amosite_result_error.png", username)
-
+        return False
+        
 def click_crocidolite_result_elements(driver, crocidolite_result_elements, username):
     """Iterates over the list of Crocidolite result elements and performs actions."""
     try:
@@ -1112,10 +1119,13 @@ def click_crocidolite_result_elements(driver, crocidolite_result_elements, usern
             except ValueError:
                 print(f"Malformed action: {action}. Expected format 'type=value'. Skipping.")
                 continue
-
+                
+        return True
+        
     except Exception as e:
         print(f"An error occurred while performing actions on Crocidolite result elements: {str(e)}")
         capture_screenshot(driver, "crocidolite_result_error.png", username)
+        return False
 
 @handle_popup
 def click_save_button(driver, username):
