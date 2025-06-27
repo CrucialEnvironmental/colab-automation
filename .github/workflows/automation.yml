@@ -1,4 +1,4 @@
-name: Realistic Variable Timing Automation
+name: Ryan - Realistic Variable Timing Automation
 
 on:
   schedule:
@@ -9,7 +9,7 @@ permissions:
   contents: write  # Explicitly grant write permissions
 
 jobs:
-  run-automation:
+  run-ryan-automation:
     runs-on: ubuntu-latest
     
     steps:
@@ -36,32 +36,32 @@ jobs:
     - name: Check existing state file
       run: |
         if [ -f automation_state.json ]; then
-          echo "✅ Previous state file found in repository"
+          echo "✅ Previous state file found for Ryan"
           echo "Current state:"
           cat automation_state.json | jq '.' || cat automation_state.json
         else
-          echo "📝 No previous state file found - creating default"
+          echo "📝 No previous state file found for Ryan - creating default"
           echo '{"current_project": null, "current_sample_index": 0, "processed_samples": [], "failed_samples": [], "completed_projects": [], "last_run_time": null, "total_samples_processed": 0}' > automation_state.json
         fi
         
-    - name: Run automation script with variable timing
+    - name: Run Ryan's automation script with variable timing
       run: |
-        echo "🕐 Checking if it's time to process a sample..."
-        python automation_script.py
+        echo "🕐 Checking if it's time to process a sample for Ryan..."
+        python automation_script.py ryan
       env:
         LOGIN_PASSWORD: ${{ secrets.LOGIN_PASSWORD }}
         
-    # NEW: Upload screenshots as artifacts
-    - name: Upload screenshots
+    # Upload Ryan's screenshots as artifacts
+    - name: Upload Ryan's screenshots
       if: always()  # Upload even if the automation failed
       uses: actions/upload-artifact@v4
       with:
-        name: automation-screenshots-${{ github.run_number }}
-        path: "*.png"
+        name: ryan-automation-screenshots-${{ github.run_number }}
+        path: "ryan_*.png"
         retention-days: 7  # Keep for 7 days
         if-no-files-found: ignore  # Don't fail if no screenshots exist
         
-    - name: Commit updated state file
+    - name: Commit Ryan's updated state file
       run: |
         # Configure git
         git config --local user.email "action@github.com"
@@ -72,7 +72,7 @@ jobs:
         
         # Check if there are changes to commit
         if git diff --staged --quiet; then
-          echo "No changes to commit"
+          echo "No changes to commit for Ryan"
         else
           # Create commit with timestamp and interval info
           TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
@@ -82,12 +82,12 @@ jobs:
             INTERVAL_INFO=" - Next interval: ${CURRENT_INTERVAL}min"
           fi
           
-          git commit -m "Update automation state - $TIMESTAMP$INTERVAL_INFO"
+          git commit -m "Update Ryan's automation state - $TIMESTAMP$INTERVAL_INFO"
           
           # Push changes back to repository
           git push origin main  # Explicitly specify branch
           
-          echo "✅ State file committed and pushed to repository"
+          echo "✅ Ryan's state file committed and pushed to repository"
         fi
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Ensure token is available
@@ -95,12 +95,12 @@ jobs:
     - name: Notify on failure
       if: failure()
       run: |
-        echo "❌ Automation failed at $(date)"
+        echo "❌ Ryan's automation failed at $(date)"
         # Even on failure, try to commit any state changes
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         git add automation_state.json || true
-        git commit -m "Update automation state - FAILED RUN $(date -u)" || true
+        git commit -m "Update Ryan's automation state - FAILED RUN $(date -u)" || true
         git push origin main || true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
