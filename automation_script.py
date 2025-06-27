@@ -1688,7 +1688,8 @@ def main():
             # INCREMENT THE SAMPLE INDEX AFTER SUCCESSFUL SAVE!
             updated_state['current_sample_index'] += 1
             
-            print(f"🕐 Next sample can be processed after: {(success_time + timedelta(minutes=updated_state.get('current_interval', 18))).strftime('%H:%M')}")
+            interval = updated_state.get('current_interval') or 18
+            print(f"🕐 Next sample can be processed after: {(success_time + timedelta(minutes=interval)).strftime('%H:%M')}")
         
         print(f"📊 Progress Update:")
         print(f"   ✅ Samples Processed: {updated_state['total_samples_processed']}")
