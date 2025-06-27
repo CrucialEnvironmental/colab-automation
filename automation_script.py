@@ -1489,7 +1489,7 @@ def main():
     
     try:
     # Login and navigate
-        if not login(driver, "ryan", os.environ.get('LOGIN_PASSWORD', '')):
+        if not login(driver, username, password, username):
             print("❌ Login failed")
             print("🔄 Timing not updated - can retry immediately")
             save_state(updated_state)
