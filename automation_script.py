@@ -233,7 +233,7 @@ def click_lab_project_list_button(driver):
         print("Timeout: Lab Project List button not clickable or not found.")
         return False
 
-def input_project_number(driver, project_number):
+def input_project_number(driver, project_number, username):
     """Inputs the project number into the appropriate field."""
     try:
         project_number_field = WebDriverWait(driver, 10).until(
@@ -310,7 +310,7 @@ def press_enter_or_search_on_project_number(driver, project_number):
     print("Failed to update the project number after all retries.")
     return False
 
-def verify_project_numbers(driver):
+def verify_project_numbers(driver, username):
     """Verifies that the project number in the input field matches the one in the span element."""
     try:
         span_project_number = WebDriverWait(driver, 10).until(
@@ -342,7 +342,7 @@ def verify_project_numbers(driver):
     except Exception as e:
         print(f"An unexpected error occurred during verification: {str(e)}")
 
-def click_view_fibre_analysis_button(driver):
+def click_view_fibre_analysis_button(driver, username):
     """Locates and clicks the 'View Fibre Analysis' button."""
     try:
         fibre_analysis_button = WebDriverWait(driver, 15).until(
