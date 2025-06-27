@@ -120,7 +120,7 @@ def setup_chrome_for_github():
     
     return driver
 
-def  filename, username):
+def capture_screenshot(driver, filename, username):
     """Captures a screenshot with user-specific naming"""
     try:
         # Add username prefix to filename
