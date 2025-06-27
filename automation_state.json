@@ -79,11 +79,12 @@
     30998,
     30997,
     30999,
-    31071
+    31071,
+    31088
   ],
   "last_run_time": null,
   "total_samples_processed": 8,
   "last_sample_time": "2025-06-27T17:49:13.013477+01:00",
-  "last_timing_check": "2025-06-27T17:58:00.704063+01:00",
-  "current_interval": 18
+  "last_timing_check": "2025-06-27T18:38:26.331456+01:00",
+  "current_interval": 19
 }
