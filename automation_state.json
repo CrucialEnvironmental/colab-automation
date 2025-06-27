@@ -1,6 +1,6 @@
 {
-  "current_project": 31060,
-  "current_sample_index": 1,
+  "current_project": 30998,
+  "current_sample_index": 0,
   "processed_samples": [
     {
       "project": 31054,
@@ -32,11 +32,12 @@
     }
   ],
   "completed_projects": [
-    31054
+    31054,
+    31060
   ],
   "last_run_time": null,
   "total_samples_processed": 2,
   "last_sample_time": "2025-06-27T11:18:29.828241+01:00",
-  "last_timing_check": "2025-06-27T13:57:43.545741+01:00",
-  "current_interval": 17
+  "last_timing_check": "2025-06-27T14:12:56.013437+01:00",
+  "current_interval": 18
 }
