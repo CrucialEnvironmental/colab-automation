@@ -212,11 +212,12 @@
     31088,
     31088,
     31088,
+    31066,
     31066
   ],
   "last_run_time": null,
   "total_samples_processed": 26,
   "last_sample_time": "2025-07-01T09:25:42.186882+01:00",
-  "last_timing_check": "2025-07-01T09:54:30.545256+01:00",
-  "current_interval": 18
+  "last_timing_check": "2025-07-01T10:40:55.325177+01:00",
+  "current_interval": 19
 }
