@@ -1,6 +1,6 @@
 {
-  "current_project": 31066,
-  "current_sample_index": 18,
+  "current_project": 31114,
+  "current_sample_index": 1,
   "processed_samples": [
     {
       "project": 31054,
@@ -197,6 +197,12 @@
       "sample": 2,
       "reason": "Processing error: unsupported type for timedelta minutes component: NoneType",
       "timestamp": "2025-06-27T10:40:24.215913+01:00"
+    },
+    {
+      "project": 31114,
+      "sample": 1,
+      "reason": "Failed to copy value to dropdown",
+      "timestamp": "2025-07-02T09:44:30.581286+01:00"
     }
   ],
   "completed_projects": [
@@ -233,11 +239,12 @@
     31066,
     31066,
     31066,
+    31066,
     31066
   ],
   "last_run_time": null,
   "total_samples_processed": 26,
   "last_sample_time": "2025-07-01T09:25:42.186882+01:00",
-  "last_timing_check": "2025-07-01T18:58:49.261041+01:00",
-  "current_interval": 18
+  "last_timing_check": "2025-07-02T09:43:13.571461+01:00",
+  "current_interval": 17
 }
