@@ -271,8 +271,13 @@
     {
       "project": 31114,
       "sample": 14,
+<<<<<<< Updated upstream
       "timestamp": "2025-07-02T16:00:19.431507+01:00",
       "save_time": "02/07/2025 16:00:19",
+=======
+      "timestamp": "2025-07-02T16:05:14.603529+01:00",
+      "save_time": "02/07/2025 16:05:14",
+>>>>>>> Stashed changes
       "pattern_used": "unknown"
     }
   ],
@@ -335,7 +340,12 @@
   ],
   "last_run_time": null,
   "total_samples_processed": 39,
+<<<<<<< Updated upstream
   "last_sample_time": "2025-07-02T16:00:19.431507+01:00",
   "last_timing_check": "2025-07-02T15:55:10.498916+01:00",
+=======
+  "last_sample_time": "2025-07-02T16:05:14.603529+01:00",
+  "last_timing_check": "2025-07-02T16:00:35.124580+01:00",
+>>>>>>> Stashed changes
   "current_interval": 17
 }
