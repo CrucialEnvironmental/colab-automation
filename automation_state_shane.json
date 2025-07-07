@@ -1,16 +1,20 @@
 {
   "current_project": 31186,
-  "current_sample_index": 0,
-  "processed_samples": [],
-  "failed_samples": [],
-  "completed_projects": [
-    31186
+  "current_sample_index": 1,
+  "processed_samples": [
+    {
+      "project": 31186,
+      "sample": 1,
+      "timestamp": "2025-07-07T13:03:35.252559+01:00",
+      "save_time": "07/07/2025 13:03:35",
+      "pattern_used": "unknown"
+    }
   ],
+  "failed_samples": [],
+  "completed_projects": [],
   "last_run_time": null,
-  "total_samples_processed": 0,
-<<<<<<< Updated upstream
-  "last_timing_check": "2025-07-07T12:58:42.085574+01:00"
-=======
-  "last_timing_check": "2025-07-07T12:59:42.566286+01:00"
->>>>>>> Stashed changes
+  "total_samples_processed": 1,
+  "user": "shane",
+  "last_timing_check": "2025-07-07T13:01:58.038562+01:00",
+  "last_sample_time": "2025-07-07T13:03:35.252559+01:00"
 }
