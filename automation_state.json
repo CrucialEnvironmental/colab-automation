@@ -20,11 +20,16 @@
       "project": 31341,
       "sample": 3,
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
       "timestamp": "2025-07-17T12:08:42.193746+01:00",
       "save_time": "17/07/2025 12:08:42",
 =======
       "timestamp": "2025-07-17T12:08:54.631743+01:00",
       "save_time": "17/07/2025 12:08:54",
+>>>>>>> Stashed changes
+=======
+      "timestamp": "2025-07-17T12:11:00.215475+01:00",
+      "save_time": "17/07/2025 12:11:00",
 >>>>>>> Stashed changes
       "pattern_used": "unknown"
     }
@@ -34,11 +39,16 @@
   "last_run_time": null,
   "total_samples_processed": 3,
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   "last_timing_check": "2025-07-17T12:06:38.980196+01:00",
   "last_sample_time": "2025-07-17T12:08:42.193746+01:00",
 =======
   "last_timing_check": "2025-07-17T12:06:40.870012+01:00",
   "last_sample_time": "2025-07-17T12:08:54.631743+01:00",
+>>>>>>> Stashed changes
+=======
+  "last_timing_check": "2025-07-17T12:08:36.434019+01:00",
+  "last_sample_time": "2025-07-17T12:11:00.215475+01:00",
 >>>>>>> Stashed changes
   "current_interval": 17
 }
