@@ -1,6 +1,6 @@
 {
   "current_project": 31519,
-  "current_sample_index": 1,
+  "current_sample_index": 2,
   "processed_samples": [
     {
       "project": 31341,
@@ -135,6 +135,12 @@
       "sample": 1,
       "reason": "Failed to navigate to sample",
       "timestamp": "2025-07-25T14:50:55.023775+01:00"
+    },
+    {
+      "project": 31519,
+      "sample": 2,
+      "reason": "Failed to navigate to sample",
+      "timestamp": "2025-07-25T15:00:35.685908+01:00"
     }
   ],
   "completed_projects": [
@@ -320,7 +326,7 @@
   "last_run_time": null,
   "total_samples_processed": 18,
   "user": "ryan",
-  "last_timing_check": "2025-07-25T14:50:09.218595+01:00",
+  "last_timing_check": "2025-07-25T14:59:38.972386+01:00",
   "last_sample_time": "2025-07-25T13:24:17.018107+01:00",
   "current_interval": 18
 }
