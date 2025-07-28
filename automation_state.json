@@ -5,8 +5,13 @@
     {
       "project": 30880,
       "sample": 1,
+<<<<<<< Updated upstream
       "timestamp": "2025-07-28T11:46:26.731811+01:00",
       "save_time": "28/07/2025 11:46:26",
+=======
+      "timestamp": "2025-07-28T11:47:21.335911+01:00",
+      "save_time": "28/07/2025 11:47:21",
+>>>>>>> Stashed changes
       "pattern_used": "unknown"
     }
   ],
@@ -15,6 +20,11 @@
   "last_run_time": null,
   "total_samples_processed": 1,
   "user": "ryan",
+<<<<<<< Updated upstream
   "last_timing_check": "2025-07-28T11:44:46.847114+01:00",
   "last_sample_time": "2025-07-28T11:46:26.731811+01:00"
+=======
+  "last_timing_check": "2025-07-28T11:45:36.127255+01:00",
+  "last_sample_time": "2025-07-28T11:47:21.335911+01:00"
+>>>>>>> Stashed changes
 }
