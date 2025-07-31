@@ -1,6 +1,6 @@
 {
   "current_project": 31664,
-  "current_sample_index": 4,
+  "current_sample_index": 5,
   "processed_samples": [
     {
       "project": 31664,
@@ -29,6 +29,13 @@
       "timestamp": "2025-07-31T16:22:40.359957+01:00",
       "save_time": "31/07/2025 16:22:40",
       "pattern_used": "unknown"
+    },
+    {
+      "project": 31664,
+      "sample": 5,
+      "timestamp": "2025-07-31T16:45:33.621030+01:00",
+      "save_time": "31/07/2025 16:45:33",
+      "pattern_used": "unknown"
     }
   ],
   "failed_samples": [],
@@ -36,9 +43,9 @@
     30880
   ],
   "last_run_time": null,
-  "total_samples_processed": 4,
+  "total_samples_processed": 5,
   "user": "ryan",
-  "last_timing_check": "2025-07-31T16:25:55.919957+01:00",
-  "last_sample_time": "2025-07-31T16:22:40.359957+01:00",
-  "current_interval": 19
+  "last_timing_check": "2025-07-31T16:43:07.637261+01:00",
+  "last_sample_time": "2025-07-31T16:45:33.621030+01:00",
+  "current_interval": 18
 }
