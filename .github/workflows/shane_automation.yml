@@ -1,130 +1,130 @@
-name: Shane Lab Automation
+# name: Shane Lab Automation
 
-on:
-  schedule:
-    # Run every 5 minutes during UK business hours (9 AM - 6 PM BST/GMT)
-    - cron: '*/5 8-17 * * 1-5'
-  workflow_dispatch:
-    inputs:
-      force_run:
-        description: 'Force run automation (ignore timing)'
-        required: false
-        default: 'false'
-        type: boolean
+# on:
+#   schedule:
+#     # Run every 5 minutes during UK business hours (9 AM - 6 PM BST/GMT)
+#     - cron: '*/5 8-17 * * 1-5'
+#   workflow_dispatch:
+#     inputs:
+#       force_run:
+#         description: 'Force run automation (ignore timing)'
+#         required: false
+#         default: 'false'
+#         type: boolean
 
-jobs:
-  shane-automation:
-    runs-on: ubuntu-latest
+# jobs:
+#   shane-automation:
+#     runs-on: ubuntu-latest
     
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-        token: ${{ secrets.GITHUB_TOKEN }}
+#     steps:
+#     - name: Checkout repository
+#       uses: actions/checkout@v4
+#       with:
+#         fetch-depth: 0
+#         token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
+#     - name: Set up Python
+#       uses: actions/setup-python@v4
+#       with:
+#         python-version: '3.11'
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install selenium webdriver-manager pandas pytz python-dateutil
+#     - name: Install dependencies
+#       run: |
+#         python -m pip install --upgrade pip
+#         pip install selenium webdriver-manager pandas pytz python-dateutil
 
-    - name: Set up Chrome
-      uses: browser-actions/setup-chrome@latest
-      with:
-        chrome-version: stable
+#     - name: Set up Chrome
+#       uses: browser-actions/setup-chrome@latest
+#       with:
+#         chrome-version: stable
 
-    - name: Install ChromeDriver
-      run: |
-        wget -O /tmp/chromedriver.zip https://chromedriver.storage.googleapis.com/$(curl -s https://chromedriver.storage.googleapis.com/LATEST_RELEASE)/chromedriver_linux64.zip
-        sudo unzip /tmp/chromedriver.zip chromedriver -d /usr/local/bin/
-        sudo chmod +x /usr/local/bin/chromedriver
+#     - name: Install ChromeDriver
+#       run: |
+#         wget -O /tmp/chromedriver.zip https://chromedriver.storage.googleapis.com/$(curl -s https://chromedriver.storage.googleapis.com/LATEST_RELEASE)/chromedriver_linux64.zip
+#         sudo unzip /tmp/chromedriver.zip chromedriver -d /usr/local/bin/
+#         sudo chmod +x /usr/local/bin/chromedriver
 
-    - name: Run Shane's automation
-      env:
-        USERNAME: ${{ secrets.SHANE_USERNAME }}
-        LOGIN_PASSWORD_SHANE: ${{ secrets.LOGIN_PASSWORD_SHANE }}
-        USER_TYPE: shane
-        FORCE_RUN: ${{ github.event.inputs.force_run }}
-      run: |
-        echo "🕐 Checking if it's time to process a sample for Shane..."
-        python automation_script.py shane
+#     - name: Run Shane's automation
+#       env:
+#         USERNAME: ${{ secrets.SHANE_USERNAME }}
+#         LOGIN_PASSWORD_SHANE: ${{ secrets.LOGIN_PASSWORD_SHANE }}
+#         USER_TYPE: shane
+#         FORCE_RUN: ${{ github.event.inputs.force_run }}
+#       run: |
+#         echo "🕐 Checking if it's time to process a sample for Shane..."
+#         python automation_script.py shane
 
-    - name: Get automation result
-      id: automation_result
-      run: |
-        if [ -f "automation_result.txt" ]; then
-          RESULT=$(cat automation_result.txt)
-          echo "result=$RESULT" >> $GITHUB_OUTPUT
-          if [ -f "next_interval.txt" ]; then
-            INTERVAL=$(cat next_interval.txt)
-            echo "interval=$INTERVAL" >> $GITHUB_OUTPUT
-          else
-            echo "interval=unknown" >> $GITHUB_OUTPUT
-          fi
-        else
-          echo "result=no_result" >> $GITHUB_OUTPUT
-          echo "interval=unknown" >> $GITHUB_OUTPUT
-        fi
+#     - name: Get automation result
+#       id: automation_result
+#       run: |
+#         if [ -f "automation_result.txt" ]; then
+#           RESULT=$(cat automation_result.txt)
+#           echo "result=$RESULT" >> $GITHUB_OUTPUT
+#           if [ -f "next_interval.txt" ]; then
+#             INTERVAL=$(cat next_interval.txt)
+#             echo "interval=$INTERVAL" >> $GITHUB_OUTPUT
+#           else
+#             echo "interval=unknown" >> $GITHUB_OUTPUT
+#           fi
+#         else
+#           echo "result=no_result" >> $GITHUB_OUTPUT
+#           echo "interval=unknown" >> $GITHUB_OUTPUT
+#         fi
 
-    - name: Upload screenshots on failure
-      if: failure()
-      uses: actions/upload-artifact@v4
-      with:
-        name: shane-automation-screenshots-${{ github.run_number }}
-        path: |
-          shane_*.png
-          *.png
-        retention-days: 7
+#     - name: Upload screenshots on failure
+#       if: failure()
+#       uses: actions/upload-artifact@v4
+#       with:
+#         name: shane-automation-screenshots-${{ github.run_number }}
+#         path: |
+#           shane_*.png
+#           *.png
+#         retention-days: 7
 
-    - name: Commit Shane's updated state file
-      if: always()
-      env:
-        INTERVAL: ${{ steps.automation_result.outputs.interval }}
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
+#     - name: Commit Shane's updated state file
+#       if: always()
+#       env:
+#         INTERVAL: ${{ steps.automation_result.outputs.interval }}
+#       run: |
+#         git config --local user.email "action@github.com"
+#         git config --local user.name "GitHub Action"
         
-        # Stash any unstaged changes and pull latest
-        git stash || echo "Nothing to stash"
-        git pull origin main --rebase || echo "Pull failed, continuing..."
-        git stash pop || echo "Nothing to pop"
+#         # Stash any unstaged changes and pull latest
+#         git stash || echo "Nothing to stash"
+#         git pull origin main --rebase || echo "Pull failed, continuing..."
+#         git stash pop || echo "Nothing to pop"
         
-        # Add and commit state file if it exists
-        if [ -f "automation_state_shane.json" ]; then
-          git add automation_state_shane.json
-          git commit -m "Update Shane's automation state - $(date -u '+%Y-%m-%d %H:%M:%S UTC') - Next interval: ${INTERVAL}min" || echo "No changes to commit"
+#         # Add and commit state file if it exists
+#         if [ -f "automation_state_shane.json" ]; then
+#           git add automation_state_shane.json
+#           git commit -m "Update Shane's automation state - $(date -u '+%Y-%m-%d %H:%M:%S UTC') - Next interval: ${INTERVAL}min" || echo "No changes to commit"
           
-          # Push with retry logic
-          for i in {1..3}; do
-            if git push origin main; then
-              echo "✅ Successfully pushed changes"
-              break
-            else
-              echo "❌ Push attempt $i failed, retrying..."
-              git pull origin main --rebase || echo "Rebase failed"
-              sleep 2
-            fi
-          done
-        else
-          echo "No state file to commit"
-        fi
+#           # Push with retry logic
+#           for i in {1..3}; do
+#             if git push origin main; then
+#               echo "✅ Successfully pushed changes"
+#               break
+#             else
+#               echo "❌ Push attempt $i failed, retrying..."
+#               git pull origin main --rebase || echo "Rebase failed"
+#               sleep 2
+#             fi
+#           done
+#         else
+#           echo "No state file to commit"
+#         fi
 
-    - name: Notify on failure
-      if: failure()
-      run: |
-        echo "🚨 Shane's automation failed!"
-        echo "Check the logs and screenshots for details."
-        echo "Run ID: ${{ github.run_id }}"
+#     - name: Notify on failure
+#       if: failure()
+#       run: |
+#         echo "🚨 Shane's automation failed!"
+#         echo "Check the logs and screenshots for details."
+#         echo "Run ID: ${{ github.run_id }}"
 
-    - name: Cleanup
-      if: always()
-      run: |
-        # Clean up temporary files but keep state
-        rm -f automation_result.txt next_interval.txt
-        # Keep screenshots for debugging but remove old ones
-        find . -name "shane_*.png" -mtime +1 -delete 2>/dev/null || true
+#     - name: Cleanup
+#       if: always()
+#       run: |
+#         # Clean up temporary files but keep state
+#         rm -f automation_result.txt next_interval.txt
+#         # Keep screenshots for debugging but remove old ones
+#         find . -name "shane_*.png" -mtime +1 -delete 2>/dev/null || true
